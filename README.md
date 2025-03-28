@@ -1,4 +1,92 @@
-# template-server
+# Media OptiConverter
+
+A service that converts and optimizes media files (images and videos) for web use. It supports various formats including SVG, PNG, WebP, JPG, JPEG, GIF, and KTX2.
+
+## Features
+
+- Converts between multiple image formats (SVG, PNG, WebP, JPG, JPEG)
+- Converts animated GIFs to MP4
+- Converts images to KTX2 format for 3D/WebGL use
+- Optimizes file sizes while maintaining quality
+- Supports both S3 and local storage
+- Handles animated WebP files
+
+## Supported Conversions
+
+### Image Formats
+- SVG → PNG
+- PNG → PNG (optimized)
+- WebP → PNG
+- JPG/JPEG → PNG
+- Any image → KTX2 (when ktx2Enabled is true)
+
+### Video Formats
+- GIF → MP4
+- Animated WebP → MP4
+
+## Running the Application
+
+### Local Development
+
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Build the application:
+```bash
+npm run build
+```
+
+3. Start the service:
+```bash
+npm start
+```
+
+For local storage mode:
+```bash
+npm run start:local
+```
+
+### Docker
+
+1. Build the Docker image:
+```bash
+docker build -t media-opticonverter .
+```
+
+2. Run the container:
+```bash
+docker run -p 8000:8000 media-opticonverter
+```
+
+## Testing
+
+### Local Tests
+
+Run tests locally:
+```bash
+npm test
+```
+
+### Docker Tests
+
+Run tests in Docker environment:
+```bash
+npm run test:docker
+```
+
+## API Endpoints
+
+- `POST /convert`: Convert a media file to a different format
+- `GET /ping`: Health check endpoint
+
+## Environment Variables
+
+- `USE_LOCAL_STORAGE`: Set to `true` to use local storage instead of S3
+- `AWS_REGION`: AWS region for S3 (default: us-east-1)
+- `BUCKET_NAME`: S3 bucket name
+- `CLOUDFRONT_DOMAIN`: CloudFront domain for serving files
 
 ## Architecture
 
