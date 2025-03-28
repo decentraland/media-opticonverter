@@ -14,6 +14,7 @@ RUN curl -L https://github.com/KhronosGroup/KTX-Software/releases/download/v4.3.
     tar xf /tmp/ktx.tar.bz2 -C /tmp && \
     cp /tmp/KTX-Software-4.3.2-Linux-x86_64/bin/toktx /usr/local/bin/ && \
     cp /tmp/KTX-Software-4.3.2-Linux-x86_64/bin/ktx2ktx2 /usr/local/bin/ && \
+    cp /tmp/KTX-Software-4.3.2-Linux-x86_64/bin/ktxinfo /usr/local/bin/ && \
     cp /tmp/KTX-Software-4.3.2-Linux-x86_64/lib/libktx.so* /usr/local/lib/ && \
     rm -rf /tmp/KTX-Software*
 
@@ -22,7 +23,14 @@ RUN npm install
 
 COPY . /app
 RUN npm run build
-RUN npm ci --only=production
+
+# Install dependencies based on NODE_ENV
+ARG NODE_ENV=production
+RUN if [ "$NODE_ENV" = "test" ]; then \
+        npm ci; \
+    else \
+        npm ci --only=production; \
+    fi
 
 FROM node:18
 
@@ -34,6 +42,7 @@ RUN apt-get update && apt-get install -y \
 # Copy the static binaries and libraries
 COPY --from=builderenv /usr/local/bin/ktx2ktx2 /usr/local/bin/ktx2ktx2
 COPY --from=builderenv /usr/local/bin/toktx /usr/local/bin/toktx
+COPY --from=builderenv /usr/local/bin/ktxinfo /usr/local/bin/ktxinfo
 COPY --from=builderenv /usr/local/lib/libktx.so* /usr/local/lib/
 
 WORKDIR /app
