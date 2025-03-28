@@ -96,6 +96,38 @@ Convert a media file to a different format.
 }
 ```
 
+**Examples:**
+```bash
+# Convert a PNG to WebP
+curl -X POST http://localhost:8000/convert \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fileUrl": "http://localhost:8000/test/assets/test.png"
+  }'
+
+# Convert an animated GIF to MP4
+curl -X POST http://localhost:8000/convert \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fileUrl": "http://localhost:8000/test/assets/test.gif"
+  }'
+
+# Convert a WebP to PNG
+curl -X POST http://localhost:8000/convert \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fileUrl": "http://localhost:8000/test/assets/test.webp"
+  }'
+
+# Convert an SVG to KTX2
+curl -X POST http://localhost:8000/convert \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fileUrl": "http://localhost:8000/test/assets/test.svg",
+    "ktx2": true
+  }'
+```
+
 ### GET /convert
 Convert a media file to a different format using query parameters.
 
@@ -110,6 +142,21 @@ Convert a media file to a different format using query parameters.
 }
 ```
 
+**Examples:**
+```bash
+# Convert a PNG to WebP
+curl "http://localhost:8000/convert?fileUrl=http://localhost:8000/test/assets/test.png"
+
+# Convert an animated GIF to MP4
+curl "http://localhost:8000/convert?fileUrl=http://localhost:8000/test/assets/test.gif"
+
+# Convert a WebP to PNG
+curl "http://localhost:8000/convert?fileUrl=http://localhost:8000/test/assets/test.webp"
+
+# Convert an SVG to KTX2
+curl "http://localhost:8000/convert?fileUrl=http://localhost:8000/test/assets/test.svg&ktx2=true"
+```
+
 ### GET /ping
 Health check endpoint.
 
@@ -120,47 +167,9 @@ Health check endpoint.
 }
 ```
 
-## Examples
-
-### Local Development
-
-Convert a PNG to WebP:
+**Example:**
 ```bash
-curl -X POST http://localhost:8000/convert \
-  -H "Content-Type: application/json" \
-  -d '{
-    "fileUrl": "http://localhost:8000/test/assets/test.png"
-  }'
-```
-
-Convert an animated GIF to MP4:
-```bash
-curl -X POST http://localhost:8000/convert \
-  -H "Content-Type: application/json" \
-  -d '{
-    "fileUrl": "http://localhost:8000/test/assets/test.gif"
-  }'
-```
-
-### Docker
-
-Convert a WebP to PNG:
-```bash
-curl -X POST http://localhost:8000/convert \
-  -H "Content-Type: application/json" \
-  -d '{
-    "fileUrl": "http://localhost:8000/test/assets/test.webp"
-  }'
-```
-
-Convert an SVG to KTX2:
-```bash
-curl -X POST http://localhost:8000/convert \
-  -H "Content-Type: application/json" \
-  -d '{
-    "fileUrl": "http://localhost:8000/test/assets/test.svg",
-    "ktx2": true
-  }'
+curl http://localhost:8000/ping
 ```
 
 ## Environment Variables
