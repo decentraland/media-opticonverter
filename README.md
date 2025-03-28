@@ -81,6 +81,53 @@ npm run test:docker
 - `POST /convert`: Convert a media file to a different format
 - `GET /ping`: Health check endpoint
 
+## Examples
+
+### Local Development
+
+Convert a PNG to WebP:
+```bash
+curl -X POST http://localhost:8000/convert \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "http://localhost:8000/test/assets/test.png",
+    "format": "webp"
+  }'
+```
+
+Convert an animated GIF to MP4:
+```bash
+curl -X POST http://localhost:8000/convert \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "http://localhost:8000/test/assets/test.gif",
+    "format": "mp4"
+  }'
+```
+
+### Docker
+
+Convert a WebP to PNG:
+```bash
+curl -X POST http://localhost:8000/convert \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "http://localhost:8000/test/assets/test.webp",
+    "format": "png"
+  }'
+```
+
+Convert an SVG to KTX2:
+```bash
+curl -X POST http://localhost:8000/convert \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "http://localhost:8000/test/assets/test.svg",
+    "format": "ktx2",
+    "ktx2Enabled": true
+  }'
+```
+
 ## Environment Variables
 
 - `USE_LOCAL_STORAGE`: Set to `true` to use local storage instead of S3
