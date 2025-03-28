@@ -1,9 +1,9 @@
-import { test } from "../components"
+import { test } from '../components'
 import * as path from 'path'
 import * as fs from 'fs'
 import * as http from 'http'
 
-test("media converter integration tests", function ({ components }) {
+test('media converter integration tests', function ({ components }) {
   let testServer: http.Server
   let testServerUrl: string
 
@@ -52,7 +52,7 @@ test("media converter integration tests", function ({ components }) {
     })
   })
 
-  it("should convert SVG to PNG", async () => {
+  it('should convert SVG to PNG', async () => {
     const { localFetch } = components
 
     const response = await localFetch.fetch('/convert', {
@@ -72,4 +72,4 @@ test("media converter integration tests", function ({ components }) {
     const storagePath = path.join(process.cwd(), 'storage', storageKey)
     expect(fs.existsSync(storagePath)).toBe(true)
   })
-}) 
+})

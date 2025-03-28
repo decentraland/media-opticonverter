@@ -7,7 +7,6 @@ import * as os from 'os'
 import * as crypto from 'crypto'
 import sharp from 'sharp'
 import { AppComponents } from '../types'
-import { ILoggerComponent } from '@well-known-components/interfaces'
 
 const execAsync = promisify(exec)
 
@@ -19,8 +18,14 @@ export class MediaConverter {
   private logger
   private useLocalStorage: boolean
   private localStoragePath: string
-  
-  constructor(bucket: string, cloudfrontDomain: string, region: string, components: AppComponents, useLocalStorage: boolean = false) {
+
+  constructor(
+    bucket: string,
+    cloudfrontDomain: string,
+    region: string,
+    components: AppComponents,
+    useLocalStorage: boolean = false
+  ) {
     this.bucket = bucket
     this.cloudfrontDomain = cloudfrontDomain
     this.s3Client = useLocalStorage ? null : new S3Client({ region })
@@ -28,7 +33,7 @@ export class MediaConverter {
     this.logger = components.logs.getLogger('media-converter')
     this.useLocalStorage = useLocalStorage
     this.localStoragePath = path.join(process.cwd(), 'storage')
-    
+
     if (useLocalStorage && !fs.existsSync(this.localStoragePath)) {
       fs.mkdirSync(this.localStoragePath, { recursive: true })
     }
@@ -49,14 +54,16 @@ export class MediaConverter {
           Prefix: key,
           MaxKeys: 1
         })
-        
+
         const listResult = await this.s3Client!.send(listCommand)
         if (listResult.Contents && listResult.Contents.length > 0) {
           return listResult.Contents[0].Key || null
         }
         return null
       } catch (error) {
-        this.logger.info('Error checking file existence in S3:', { error: error instanceof Error ? error.message : String(error) })
+        this.logger.info('Error checking file existence in S3:', {
+          error: error instanceof Error ? error.message : String(error)
+        })
         return null
       }
     }
@@ -78,20 +85,22 @@ export class MediaConverter {
           Prefix: key,
           MaxKeys: 1
         })
-        
+
         const listResult = await this.s3Client!.send(listCommand)
         if (listResult.Contents && listResult.Contents.length > 0) {
           return true
         }
 
         // If not exists, upload it
-        await this.s3Client!.send(new PutObjectCommand({
-          Bucket: this.bucket,
-          Key: key,
-          Body: fs.createReadStream(filePath),
-          ContentType: contentType,
-          CacheControl: 'public, max-age=31536000'
-        }))
+        await this.s3Client!.send(
+          new PutObjectCommand({
+            Bucket: this.bucket,
+            Key: key,
+            Body: fs.createReadStream(filePath),
+            ContentType: contentType,
+            CacheControl: 'public, max-age=31536000'
+          })
+        )
         return false
       } catch (error) {
         this.logger.error('Error in uploadFile:', { error: error instanceof Error ? error.message : String(error) })
@@ -111,26 +120,34 @@ export class MediaConverter {
     try {
       const buffer = fs.readFileSync(filePath, { encoding: null })
       const header = buffer.slice(0, 12)
-      
-      if (header[0] === 0x52 && // R
-          header[1] === 0x49 && // I
-          header[2] === 0x46 && // F
-          header[3] === 0x46 && // F
-          header[8] === 0x57 && // W
-          header[9] === 0x45 && // E
-          header[10] === 0x42 && // B
-          header[11] === 0x50) { // P
+
+      if (
+        header[0] === 0x52 && // R
+        header[1] === 0x49 && // I
+        header[2] === 0x46 && // F
+        header[3] === 0x46 && // F
+        header[8] === 0x57 && // W
+        header[9] === 0x45 && // E
+        header[10] === 0x42 && // B
+        header[11] === 0x50
+      ) {
+        // P
         return '.webp'
       }
 
       try {
         const metadata = await sharp(filePath).metadata()
         switch (metadata.format) {
-          case 'png': return '.png'
-          case 'jpeg': return '.jpg'
-          case 'webp': return '.webp'
-          case 'gif': return '.gif'
-          case 'svg': return '.svg'
+          case 'png':
+            return '.png'
+          case 'jpeg':
+            return '.jpg'
+          case 'webp':
+            return '.webp'
+          case 'gif':
+            return '.gif'
+          case 'svg':
+            return '.svg'
         }
       } catch (error) {
         this.logger.info('Sharp metadata failed:', { error: error instanceof Error ? error.message : String(error) })
@@ -139,13 +156,18 @@ export class MediaConverter {
       try {
         const { stdout } = await execAsync(`file -b --mime-type "${filePath}"`)
         const mimeType = stdout.trim()
-        
+
         switch (mimeType) {
-          case 'image/png': return '.png'
-          case 'image/jpeg': return '.jpg'
-          case 'image/webp': return '.webp'
-          case 'image/gif': return '.gif'
-          case 'image/svg+xml': return '.svg'
+          case 'image/png':
+            return '.png'
+          case 'image/jpeg':
+            return '.jpg'
+          case 'image/webp':
+            return '.webp'
+          case 'image/gif':
+            return '.gif'
+          case 'image/svg+xml':
+            return '.svg'
           default:
             if (mimeType.startsWith('image/')) {
               const ext = mimeType.split('/')[1]
@@ -153,7 +175,9 @@ export class MediaConverter {
             }
         }
       } catch (fileError) {
-        this.logger.info('file command failed:', { error: fileError instanceof Error ? fileError.message : String(fileError) })
+        this.logger.info('file command failed:', {
+          error: fileError instanceof Error ? fileError.message : String(fileError)
+        })
       }
 
       throw new Error('Could not detect file type')
@@ -166,37 +190,48 @@ export class MediaConverter {
   private async isAnimatedWebP(filePath: string): Promise<boolean> {
     try {
       const buffer = fs.readFileSync(filePath, { encoding: null })
-      if (buffer[0] === 0x52 && // R
-          buffer[1] === 0x49 && // I
-          buffer[2] === 0x46 && // F
-          buffer[3] === 0x46 && // F
-          buffer[8] === 0x57 && // W
-          buffer[9] === 0x45 && // E
-          buffer[10] === 0x42 && // B
-          buffer[11] === 0x50) { // P
-        
+      if (
+        buffer[0] === 0x52 && // R
+        buffer[1] === 0x49 && // I
+        buffer[2] === 0x46 && // F
+        buffer[3] === 0x46 && // F
+        buffer[8] === 0x57 && // W
+        buffer[9] === 0x45 && // E
+        buffer[10] === 0x42 && // B
+        buffer[11] === 0x50
+      ) {
+        // P
+
         const content = buffer.toString('ascii')
         const hasANIM = content.includes('ANIM')
         const hasANMF = content.includes('ANMF')
-        
+
         if (hasANIM || hasANMF) {
           try {
             const metadata = await sharp(filePath).metadata()
             return metadata.pages ? metadata.pages > 1 : false
           } catch (error) {
-            this.logger.info('Sharp metadata failed:', { error: error instanceof Error ? error.message : String(error) })
+            this.logger.info('Sharp metadata failed:', {
+              error: error instanceof Error ? error.message : String(error)
+            })
             return true
           }
         }
       }
       return false
     } catch (error) {
-      this.logger.info('Error checking if WebP is animated:', { error: error instanceof Error ? error.message : String(error) })
+      this.logger.info('Error checking if WebP is animated:', {
+        error: error instanceof Error ? error.message : String(error)
+      })
       return false
     }
   }
 
-  private async getConversionConfig(ext: string, inputPath: string, ktx2Enabled: boolean): Promise<{
+  private async getConversionConfig(
+    ext: string,
+    inputPath: string,
+    ktx2Enabled: boolean
+  ): Promise<{
     outExt: string
     mimetype: string
     convertCommand: string[]
@@ -204,17 +239,13 @@ export class MediaConverter {
     ktx2Command?: string[]
   }> {
     const normalizedExt = ext.toLowerCase()
-    
+
     switch (normalizedExt) {
       case '.svg': {
         const svgBaseConfig = {
           outExt: '.png',
           mimetype: 'image/png',
-          convertCommand: [
-            'sharp',
-            '${input}',
-            '${output}'
-          ]
+          convertCommand: ['sharp', '${input}', '${output}']
         }
 
         if (ktx2Enabled) {
@@ -222,14 +253,7 @@ export class MediaConverter {
             ...svgBaseConfig,
             outExt: '.ktx2',
             mimetype: 'image/ktx2',
-            ktx2Command: [
-              'ktx2ktx2',
-              '--genmipmap',
-              '--t2',
-              '-o',
-              '${output}',
-              '${output}.ktx2'
-            ]
+            ktx2Command: ['ktx2ktx2', '--genmipmap', '--t2', '-o', '${output}', '${output}.ktx2']
           }
         }
 
@@ -273,19 +297,19 @@ export class MediaConverter {
               fs.mkdirSync(framesDir)
 
               // Extract frames
-              const targetFrames = Math.ceil(frames * 0.7); // 70% of total frames
-              const step = frames / targetFrames; // Step to evenly sample frames
-              
+              const targetFrames = Math.ceil(frames * 0.7) // 70% of total frames
+              const step = frames / targetFrames // Step to evenly sample frames
+
               for (let i = 0; i < targetFrames; i++) {
-                const frameIndex = Math.floor(i * step); // Get the frame index
-                const framePath = path.join(framesDir, `frame_${i}.png`);
-              
+                const frameIndex = Math.floor(i * step) // Get the frame index
+                const framePath = path.join(framesDir, `frame_${i}.png`)
+
                 await sharp(inputPath, { page: frameIndex })
                   .resize(512, 512, {
                     fit: 'inside',
                     withoutEnlargement: true
                   })
-                  .toFile(framePath);
+                  .toFile(framePath)
               }
 
               return {
@@ -315,18 +339,16 @@ export class MediaConverter {
               }
             }
           } catch (error) {
-            this.logger.info('Error checking WebP frames:', { error: error instanceof Error ? error.message : String(error) })
+            this.logger.info('Error checking WebP frames:', {
+              error: error instanceof Error ? error.message : String(error)
+            })
           }
         }
-        
+
         const baseConfig = {
           outExt: '.png',
           mimetype: 'image/png',
-          convertCommand: [
-            'sharp',
-            '${input}',
-            '${output}'
-          ]
+          convertCommand: ['sharp', '${input}', '${output}']
         }
 
         if (ktx2Enabled) {
@@ -334,12 +356,7 @@ export class MediaConverter {
             ...baseConfig,
             outExt: '.ktx2',
             mimetype: 'image/ktx2',
-            ktx2Command: [
-              'toktx',
-              '--t2',
-              '${output}',
-              '${output}.png'
-            ]
+            ktx2Command: ['toktx', '--t2', '${output}', '${output}.png']
           }
         }
 
@@ -352,11 +369,7 @@ export class MediaConverter {
         const baseConfig = {
           outExt: '.png',
           mimetype: 'image/png',
-          convertCommand: [
-            'sharp',
-            '${input}',
-            '${output}'
-          ]
+          convertCommand: ['sharp', '${input}', '${output}']
         }
 
         if (ktx2Enabled) {
@@ -364,12 +377,7 @@ export class MediaConverter {
             ...baseConfig,
             outExt: '.ktx2',
             mimetype: 'image/ktx2',
-            ktx2Command: [
-              'toktx',
-              '--t2',
-              '${output}',
-              '${output}.png'
-            ]
+            ktx2Command: ['toktx', '--t2', '${output}', '${output}.png']
           }
         }
 
@@ -391,7 +399,7 @@ export class MediaConverter {
       const cleanUrl = fileUrl.split('?')[0]
       let ext = path.extname(cleanUrl)
       const shortHash = this.generateShortHash(cleanUrl)
-      
+
       // Check if file exists in storage
       let storageKey = await this.fileExists(shortHash)
       if (storageKey) {
@@ -423,7 +431,7 @@ export class MediaConverter {
       }
 
       const config = await this.getConversionConfig(ext, tempInputPath, ktx2Enabled)
-      
+
       storageKey = `${shortHash}${config.outExt}`
       outputPath = path.join(os.tmpdir(), `output_${shortHash}${config.outExt}`)
       inputPath = path.join(os.tmpdir(), `input_${shortHash}${ext}`)
@@ -435,11 +443,10 @@ export class MediaConverter {
       // Convert file
       if (config.convertCommand[0] === 'sharp') {
         const inputExt = path.extname(inputPath).toLowerCase()
-        let sharpInstance = sharp(inputPath)
-          .resize(1024, 1024, {
-            fit: 'inside',
-            withoutEnlargement: true
-          })
+        let sharpInstance = sharp(inputPath).resize(1024, 1024, {
+          fit: 'inside',
+          withoutEnlargement: true
+        })
 
         // Optimize based on input format
         if (inputExt === '.svg') {
@@ -481,7 +488,7 @@ export class MediaConverter {
         }
 
         await sharpInstance.toFile(outputPath)
-        
+
         if (!config.ktx2Command) {
           // Optimize PNG with optipng
           const optipngCommand = `optipng -o7 -strip all "${outputPath}"`
@@ -490,10 +497,10 @@ export class MediaConverter {
         }
       } else {
         const convertCommand = config.convertCommand
-          .map(cmd => cmd.replace('${input}', inputPath).replace('${output}', outputPath))
+          .map((cmd) => cmd.replace('${input}', inputPath).replace('${output}', outputPath))
           .join(' ')
-        
-        const { stdout: convertOutput, stderr: convertError } = await execAsync(convertCommand)
+
+        const { stdout: _, stderr: convertError } = await execAsync(convertCommand)
         if (convertError) this.logger.info('Conversion stderr:', { error: convertError })
       }
 
@@ -506,27 +513,24 @@ export class MediaConverter {
       if (config.ktx2Command) {
         // First convert to PNG as base
         const pngPath = path.join(os.tmpdir(), `temp_png_${shortHash}.png`)
-        await sharp(outputPath)
-          .png()
-          .toFile(pngPath)
+        await sharp(outputPath).png().toFile(pngPath)
 
         // First convert to KTX2 with toktx
         const ktx2TempPath = path.join(os.tmpdir(), `temp_ktx2_${shortHash}.ktx2`)
-      //  const toktxCommand = `toktx --t2 --genmipmap --encode uastc --uastc_quality 4 --zcmp 10 "${ktx2TempPath}" "${pngPath}"`
+        //  const toktxCommand = `toktx --t2 --genmipmap --encode uastc --uastc_quality 4 --zcmp 10 "${ktx2TempPath}" "${pngPath}"`
         const toktxCommand = `toktx --bcmp --t2 --genmipmap "${ktx2TempPath}" "${pngPath}"`
 
-        
         this.logger.info('Executing toktx command:', { command: toktxCommand })
-        const { stdout: toktxOutput, stderr: toktxError } = await execAsync(toktxCommand)
+        const { stdout: _, stderr: toktxError } = await execAsync(toktxCommand)
         if (toktxError) this.logger.info('Toktx conversion stderr:', { error: toktxError })
 
         if (!fs.existsSync(ktx2TempPath)) {
-          throw new Error(`File not found: ${ktx2TempPath}`);
+          throw new Error(`File not found: ${ktx2TempPath}`)
         }
-        
-        const size = fs.statSync(ktx2TempPath).size;
+
+        const size = fs.statSync(ktx2TempPath).size
         if (size < 100) {
-          throw new Error(`File exists but is too small to be a valid .ktx2 (${size} bytes)`);
+          throw new Error(`File exists but is too small to be a valid .ktx2 (${size} bytes)`)
         }
 
         // remove this line if then apply optimizations
@@ -545,20 +549,17 @@ export class MediaConverter {
 
       // Optimize if file is large
       if (config.optimizeCommand && fs.statSync(outputPath).size > 500 * 1024) {
-        
-        const optimizeCommand = config.optimizeCommand
-          .map(cmd => cmd.replace('${output}', outputPath))
-          .join(' ')
-        
-        this.logger.info("Optimizing large file with command", {optimizeCommand})
-        
-        const { stdout: optimizeOutput, stderr: optimizeError } = await execAsync(optimizeCommand)
+        const optimizeCommand = config.optimizeCommand.map((cmd) => cmd.replace('${output}', outputPath)).join(' ')
+
+        this.logger.info('Optimizing large file with command', { optimizeCommand })
+
+        const { stdout: _, stderr: optimizeError } = await execAsync(optimizeCommand)
         if (optimizeError) this.logger.info('Optimization stderr:', { error: optimizeError })
 
         if (config.mimetype === 'image/png') {
           const optipngCommand = `optipng -o1 "${outputPath}"`
-          this.logger.info("Optimizing png file with command", {optipngCommand})
-          const { stdout: optipngOutput, stderr: optipngError } = await execAsync(optipngCommand)
+          this.logger.info('Optimizing png file with command', { optipngCommand })
+          const { stdout: _, stderr: optipngError } = await execAsync(optipngCommand)
           if (optipngError) this.logger.info('optipng stderr:', { error: optipngError })
         }
       }
@@ -599,4 +600,4 @@ export class MediaConverter {
       }
     }
   }
-} 
+}

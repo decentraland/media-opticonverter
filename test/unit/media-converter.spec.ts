@@ -45,7 +45,7 @@ describe('MediaConverter Unit Tests', () => {
     return new Promise((resolve, reject) => {
       ffmpeg.ffprobe(filePath, (err, metadata) => {
         if (err) reject(err)
-        const videoStream = metadata.streams.find(s => s.codec_type === 'video')
+        const videoStream = metadata.streams.find((s) => s.codec_type === 'video')
         resolve({
           width: videoStream?.width || 0,
           height: videoStream?.height || 0
@@ -57,13 +57,13 @@ describe('MediaConverter Unit Tests', () => {
   // Helper function to get KTX2 dimensions
   async function getKTX2Dimensions(filePath: string): Promise<{ width: number; height: number }> {
     const { stdout } = await execAsync(`ktxinfo "${filePath}"`)
-    const widthMatch = stdout.match(/pixelWidth:\s+(\d+)/);
-    const heightMatch = stdout.match(/pixelHeight:\s+(\d+)/);
-    
+    const widthMatch = stdout.match(/pixelWidth:\s+(\d+)/)
+    const heightMatch = stdout.match(/pixelHeight:\s+(\d+)/)
+
     if (!widthMatch || !heightMatch) {
       throw new Error('Could not extract dimensions from KTX2 file')
     }
-    
+
     return {
       width: parseInt(widthMatch[1], 10),
       height: parseInt(heightMatch[1], 10)
@@ -101,7 +101,7 @@ describe('MediaConverter Unit Tests', () => {
 
     // Initialize converter with test values
     converter = new MediaConverter('test-bucket', 'test-domain', 'us-east-1', components, true)
-    
+
     // Set up test files
     testFiles = {
       svg: path.join(process.cwd(), 'test', 'assets', 'test.svg'),
@@ -204,7 +204,7 @@ describe('MediaConverter Unit Tests', () => {
       // Verify the file was created in storage with the expected name
       const storagePath = path.join(process.cwd(), 'storage', `${expectedHashes.svg}.png`)
       expect(fs.existsSync(storagePath)).toBe(true)
-      
+
       // Verify file size is smaller than original
       const resultSize = fs.statSync(storagePath).size
       expect(resultSize).toBeLessThan(originalFileSizes.svg)
@@ -223,7 +223,7 @@ describe('MediaConverter Unit Tests', () => {
       // Verify the file was created in storage with the expected name
       const storagePath = path.join(process.cwd(), 'storage', `${expectedHashes.svg}.ktx2`)
       expect(fs.existsSync(storagePath)).toBe(true)
-      
+
       // Verify file size is smaller than original
       const resultSize = fs.statSync(storagePath).size
       expect(resultSize).toBeLessThan(originalFileSizes.svg)
@@ -244,7 +244,7 @@ describe('MediaConverter Unit Tests', () => {
       // Verify the file was created in storage with the expected name
       const storagePath = path.join(process.cwd(), 'storage', `${expectedHashes.png}.png`)
       expect(fs.existsSync(storagePath)).toBe(true)
-      
+
       // Verify file size is smaller than original
       const resultSize = fs.statSync(storagePath).size
       expect(resultSize).toBeLessThan(originalFileSizes.png)
@@ -263,7 +263,7 @@ describe('MediaConverter Unit Tests', () => {
       // Verify the file was created in storage with the expected name
       const storagePath = path.join(process.cwd(), 'storage', `${expectedHashes.png}.ktx2`)
       expect(fs.existsSync(storagePath)).toBe(true)
-      
+
       // Verify file size is smaller than original
       const resultSize = fs.statSync(storagePath).size
       expect(resultSize).toBeLessThan(originalFileSizes.png)
@@ -284,7 +284,7 @@ describe('MediaConverter Unit Tests', () => {
       // Verify the file was created in storage with the expected name
       const storagePath = path.join(process.cwd(), 'storage', `${expectedHashes.jpg}.png`)
       expect(fs.existsSync(storagePath)).toBe(true)
-      
+
       // Verify file size is smaller than original
       const resultSize = fs.statSync(storagePath).size
       expect(resultSize).toBeLessThan(originalFileSizes.jpg)
@@ -303,7 +303,7 @@ describe('MediaConverter Unit Tests', () => {
       // Verify the file was created in storage with the expected name
       const storagePath = path.join(process.cwd(), 'storage', `${expectedHashes.jpg}.ktx2`)
       expect(fs.existsSync(storagePath)).toBe(true)
-      
+
       // Verify file size is smaller than original
       const resultSize = fs.statSync(storagePath).size
       expect(resultSize).toBeLessThan(originalFileSizes.jpg)
@@ -324,7 +324,7 @@ describe('MediaConverter Unit Tests', () => {
       // Verify the file was created in storage with the expected name
       const storagePath = path.join(process.cwd(), 'storage', `${expectedHashes.jpeg}.png`)
       expect(fs.existsSync(storagePath)).toBe(true)
-      
+
       // Verify file size is smaller than original
       const resultSize = fs.statSync(storagePath).size
       expect(resultSize).toBeLessThan(originalFileSizes.jpeg)
@@ -343,7 +343,7 @@ describe('MediaConverter Unit Tests', () => {
       // Verify the file was created in storage with the expected name
       const storagePath = path.join(process.cwd(), 'storage', `${expectedHashes.jpeg}.ktx2`)
       expect(fs.existsSync(storagePath)).toBe(true)
-      
+
       // Verify file size is smaller than original
       const resultSize = fs.statSync(storagePath).size
       expect(resultSize).toBeLessThan(originalFileSizes.jpeg)
@@ -364,7 +364,7 @@ describe('MediaConverter Unit Tests', () => {
       // Verify the file was created in storage with the expected name
       const storagePath = path.join(process.cwd(), 'storage', `${expectedHashes.webp}.png`)
       expect(fs.existsSync(storagePath)).toBe(true)
-      
+
       // Not Verify file size is cause webp is super low quality
       // Verify dimensions are within limits
       const dimensions = await getDimensions(storagePath)
@@ -380,7 +380,6 @@ describe('MediaConverter Unit Tests', () => {
       // Verify the file was created in storage with the expected name
       const storagePath = path.join(process.cwd(), 'storage', `${expectedHashes.webp}.ktx2`)
       expect(fs.existsSync(storagePath)).toBe(true)
-      
 
       // Not Verify file size is cause webp is super low quality
       // Verify dimensions are within limits
@@ -397,7 +396,7 @@ describe('MediaConverter Unit Tests', () => {
       // Verify the file was created in storage with the expected name
       const storagePath = path.join(process.cwd(), 'storage', `${expectedHashes.animated_webp}.mp4`)
       expect(fs.existsSync(storagePath)).toBe(true)
-      
+
       // Verify file size is smaller than original
       const resultSize = fs.statSync(storagePath).size
       expect(resultSize).toBeLessThan(originalFileSizes.animated_webp)
@@ -418,12 +417,11 @@ describe('MediaConverter Unit Tests', () => {
       // Verify the file was created in storage with the expected name
       const storagePath = path.join(process.cwd(), 'storage', `${expectedHashes.gif}.mp4`)
       expect(fs.existsSync(storagePath)).toBe(true)
-      
+
       // Verify file size is smaller than original
       const resultSize = fs.statSync(storagePath).size
       expect(resultSize).toBeLessThan(originalFileSizes.gif)
       console.log('size for gif, result and then original', resultSize, originalFileSizes.gif)
-
 
       // Verify dimensions are within limits
       const dimensions = await getDimensions(storagePath)
@@ -440,13 +438,12 @@ describe('MediaConverter Unit Tests', () => {
     it('should handle empty files', async () => {
       const emptyFile = path.join(process.cwd(), 'test', 'assets', 'empty.png')
       fs.writeFileSync(emptyFile, '')
-      
+
       // Add empty file to test server
       testFiles['empty'] = emptyFile
-      
-      
+
       await expect(converter.convert(`${testServerUrl}/empty`)).rejects.toThrow('File cannot be downloaded or is empty')
-      
+
       fs.unlinkSync(emptyFile)
       delete testFiles['empty']
     })
@@ -454,12 +451,12 @@ describe('MediaConverter Unit Tests', () => {
     it('should handle unsupported file types', async () => {
       const invalidFile = path.join(process.cwd(), 'test', 'assets', 'invalid.txt')
       fs.writeFileSync(invalidFile, 'invalid content')
-      
+
       // Add invalid file to test server
       testFiles['invalid'] = invalidFile
-      
+
       await expect(converter.convert(`${testServerUrl}/invalid`)).rejects.toThrow('Could not detect file type')
-      
+
       fs.unlinkSync(invalidFile)
       delete testFiles['invalid']
     })
@@ -467,12 +464,12 @@ describe('MediaConverter Unit Tests', () => {
     it('should handle conversion failures', async () => {
       const invalidSvg = path.join(process.cwd(), 'test', 'assets', 'invalid.svg')
       fs.writeFileSync(invalidSvg, '<invalid>svg</invalid>')
-      
+
       // Add invalid SVG to test server
       testFiles['invalid_svg'] = invalidSvg
-      
+
       await expect(converter.convert(`${testServerUrl}/invalid_svg`)).rejects.toThrow()
-      
+
       fs.unlinkSync(invalidSvg)
       delete testFiles['invalid_svg']
     })
@@ -484,13 +481,13 @@ describe('MediaConverter Unit Tests', () => {
       const buffer = fs.readFileSync(pngFile)
       const tempFile = path.join(os.tmpdir(), `test_${Date.now()}`)
       fs.writeFileSync(tempFile, buffer)
-      
+
       // Add temp file to test server
       testFiles['temp'] = tempFile
-      
+
       const result = await converter.convert(`${testServerUrl}/temp`)
       expect(result).toContain('.png')
-      
+
       fs.unlinkSync(tempFile)
       delete testFiles['temp']
     })
@@ -499,13 +496,13 @@ describe('MediaConverter Unit Tests', () => {
       const pngFile = path.join(process.cwd(), 'test', 'assets', 'test.png')
       const tempFile = path.join(os.tmpdir(), `test_${Date.now()}`)
       fs.copyFileSync(pngFile, tempFile)
-      
+
       // Add temp file to test server
       testFiles['noext'] = tempFile
-      
+
       const result = await converter.convert(`${testServerUrl}/noext`)
       expect(result).toContain('.png')
-      
+
       fs.unlinkSync(tempFile)
       delete testFiles['noext']
     })
@@ -516,7 +513,7 @@ describe('MediaConverter Unit Tests', () => {
       const result = await converter.convert(`${testServerUrl}/png`)
       expect(result).toContain('localhost')
       expect(result).toContain('/storage/')
-      
+
       // Clean up
       const storagePath = path.join(process.cwd(), 'storage')
       if (fs.existsSync(storagePath)) {
@@ -527,4 +524,4 @@ describe('MediaConverter Unit Tests', () => {
       }
     })
   })
-}) 
+})
