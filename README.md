@@ -78,8 +78,47 @@ npm run test:docker
 
 ## API Endpoints
 
-- `POST /convert`: Convert a media file to a different format
-- `GET /ping`: Health check endpoint
+### POST /convert
+Convert a media file to a different format.
+
+**Request Body:**
+```json
+{
+  "fileUrl": "string",    // URL of the file to convert
+  "ktx2": boolean        // Optional: Enable KTX2 conversion (default: false)
+}
+```
+
+**Response:**
+```json
+{
+  "url": "string"  // URL of the converted file
+}
+```
+
+### GET /convert
+Convert a media file to a different format using query parameters.
+
+**Query Parameters:**
+- `fileUrl`: URL of the file to convert
+- `ktx2`: Optional boolean to enable KTX2 conversion (default: false)
+
+**Response:**
+```json
+{
+  "url": "string"  // URL of the converted file
+}
+```
+
+### GET /ping
+Health check endpoint.
+
+**Response:**
+```json
+{
+  "status": 200
+}
+```
 
 ## Examples
 
@@ -90,8 +129,7 @@ Convert a PNG to WebP:
 curl -X POST http://localhost:8000/convert \
   -H "Content-Type: application/json" \
   -d '{
-    "url": "http://localhost:8000/test/assets/test.png",
-    "format": "webp"
+    "fileUrl": "http://localhost:8000/test/assets/test.png"
   }'
 ```
 
@@ -100,8 +138,7 @@ Convert an animated GIF to MP4:
 curl -X POST http://localhost:8000/convert \
   -H "Content-Type: application/json" \
   -d '{
-    "url": "http://localhost:8000/test/assets/test.gif",
-    "format": "mp4"
+    "fileUrl": "http://localhost:8000/test/assets/test.gif"
   }'
 ```
 
@@ -112,8 +149,7 @@ Convert a WebP to PNG:
 curl -X POST http://localhost:8000/convert \
   -H "Content-Type: application/json" \
   -d '{
-    "url": "http://localhost:8000/test/assets/test.webp",
-    "format": "png"
+    "fileUrl": "http://localhost:8000/test/assets/test.webp"
   }'
 ```
 
@@ -122,9 +158,8 @@ Convert an SVG to KTX2:
 curl -X POST http://localhost:8000/convert \
   -H "Content-Type: application/json" \
   -d '{
-    "url": "http://localhost:8000/test/assets/test.svg",
-    "format": "ktx2",
-    "ktx2Enabled": true
+    "fileUrl": "http://localhost:8000/test/assets/test.svg",
+    "ktx2": true
   }'
 ```
 
