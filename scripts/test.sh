@@ -8,4 +8,4 @@ docker run --platform linux/amd64 --rm \
   -v "$(pwd):/app" \
   -w /app \
   media-opticonverter \
-  npm test 
+  npm run test:base
