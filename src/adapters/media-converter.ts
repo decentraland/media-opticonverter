@@ -12,22 +12,99 @@ import { ILoggerComponent } from '@well-known-components/interfaces'
 const execAsync = promisify(exec)
 
 export class MediaConverter {
-  private s3Client: S3Client
+  private s3Client: S3Client | null
   private bucket: string
   private cloudfrontDomain: string
   private components: AppComponents
   private logger
+  private useLocalStorage: boolean
+  private localStoragePath: string
   
-  constructor(bucket: string, cloudfrontDomain: string, region: string, components: AppComponents) {
+  constructor(bucket: string, cloudfrontDomain: string, region: string, components: AppComponents, useLocalStorage: boolean = false) {
     this.bucket = bucket
     this.cloudfrontDomain = cloudfrontDomain
-    this.s3Client = new S3Client({ region })
+    this.s3Client = useLocalStorage ? null : new S3Client({ region })
     this.components = components
     this.logger = components.logs.getLogger('media-converter')
+    this.useLocalStorage = useLocalStorage
+    this.localStoragePath = path.join(process.cwd(), 'storage')
+    
+    if (useLocalStorage && !fs.existsSync(this.localStoragePath)) {
+      fs.mkdirSync(this.localStoragePath, { recursive: true })
+    }
   }
 
   private generateShortHash(str: string): string {
     return crypto.createHash('md5').update(str).digest('hex').substring(0, 8)
+  }
+
+  private async fileExists(key: string): Promise<string | null> {
+    if (this.useLocalStorage) {
+      const filePath = path.join(this.localStoragePath, key)
+      return fs.existsSync(filePath) ? key : null
+    } else {
+      try {
+        const listCommand = new ListObjectsV2Command({
+          Bucket: this.bucket,
+          Prefix: key,
+          MaxKeys: 1
+        })
+        
+        const listResult = await this.s3Client!.send(listCommand)
+        if (listResult.Contents && listResult.Contents.length > 0) {
+          return listResult.Contents[0].Key || null
+        }
+        return null
+      } catch (error) {
+        this.logger.info('Error checking file existence in S3:', { error: error instanceof Error ? error.message : String(error) })
+        return null
+      }
+    }
+  }
+
+  private async uploadFile(key: string, filePath: string, contentType: string): Promise<boolean> {
+    if (this.useLocalStorage) {
+      const targetPath = path.join(this.localStoragePath, key)
+      if (fs.existsSync(targetPath)) {
+        return true
+      }
+      fs.copyFileSync(filePath, targetPath)
+      return false
+    } else {
+      try {
+        // First check if file exists
+        const listCommand = new ListObjectsV2Command({
+          Bucket: this.bucket,
+          Prefix: key,
+          MaxKeys: 1
+        })
+        
+        const listResult = await this.s3Client!.send(listCommand)
+        if (listResult.Contents && listResult.Contents.length > 0) {
+          return true
+        }
+
+        // If not exists, upload it
+        await this.s3Client!.send(new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+          Body: fs.createReadStream(filePath),
+          ContentType: contentType,
+          CacheControl: 'public, max-age=31536000'
+        }))
+        return false
+      } catch (error) {
+        this.logger.error('Error in uploadFile:', { error: error instanceof Error ? error.message : String(error) })
+        throw error
+      }
+    }
+  }
+
+  private getFileUrl(key: string): string {
+    if (this.useLocalStorage) {
+      return `http://localhost:${process.env.PORT || '8000'}/storage/${key}`
+    }
+    return `https://${this.cloudfrontDomain}/${key}`
   }
 
   private async detectFileType(filePath: string): Promise<string> {
@@ -309,22 +386,11 @@ export class MediaConverter {
       const cleanUrl = fileUrl.split('?')[0]
       let ext = path.extname(cleanUrl)
       const shortHash = this.generateShortHash(cleanUrl)
-
-      // Check if file exists in S3
-      try {
-        const listCommand = new ListObjectsV2Command({
-          Bucket: this.bucket,
-          Prefix: shortHash
-        })
-        
-        const listResult = await this.s3Client.send(listCommand)
-        
-        if (listResult.Contents && listResult.Contents.length > 0) {
-          const existingKey = listResult.Contents[0].Key
-          return `https://${this.cloudfrontDomain}/${existingKey}`
-        }
-      } catch (error) {
-        this.logger.info('File not found in S3, proceeding with download')
+      
+      // Check if file exists in storage
+      let storageKey = await this.fileExists(shortHash)
+      if (storageKey) {
+        return this.getFileUrl(storageKey)
       }
 
       // Download input file
@@ -352,7 +418,8 @@ export class MediaConverter {
       }
 
       const config = await this.getConversionConfig(ext, tempInputPath, ktx2Enabled)
-      const s3Key = `${shortHash}${config.outExt}`
+      
+      storageKey = `${shortHash}${config.outExt}`
       outputPath = path.join(os.tmpdir(), `output_${shortHash}${config.outExt}`)
       inputPath = path.join(os.tmpdir(), `input_${shortHash}${ext}`)
 
@@ -492,16 +559,13 @@ export class MediaConverter {
         }
       }
 
-      // Upload to S3
-      await this.s3Client.send(new PutObjectCommand({
-        Bucket: this.bucket,
-        Key: s3Key,
-        Body: fs.createReadStream(outputPath),
-        ContentType: config.mimetype,
-        CacheControl: 'public, max-age=31536000'
-      }))
+      // Upload to storage and check if file already existed
+      const fileAlreadyExists = await this.uploadFile(storageKey, outputPath, config.mimetype)
+      if (fileAlreadyExists) {
+        return this.getFileUrl(storageKey)
+      }
 
-      return `https://${this.cloudfrontDomain}/${s3Key}`
+      return this.getFileUrl(storageKey)
     } catch (error) {
       this.logger.error('Error processing request:', { error: error instanceof Error ? error.message : String(error) })
       throw error
