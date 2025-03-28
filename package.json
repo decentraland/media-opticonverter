@@ -18,10 +18,13 @@
     "tabWidth": 2
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.777.0",
     "@well-known-components/env-config-provider": "^1.2.0",
+    "@well-known-components/fetch-component": "^3.0.0",
     "@well-known-components/http-server": "^2.1.0",
     "@well-known-components/interfaces": "^1.5.1",
     "@well-known-components/logger": "^3.1.3",
-    "@well-known-components/metrics": "^2.1.0"
+    "@well-known-components/metrics": "^2.1.0",
+    "sharp": "^0.33.5"
   }
 }

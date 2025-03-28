@@ -8,15 +8,17 @@ import type {
 } from '@well-known-components/interfaces'
 import { metricDeclarations } from './metrics'
 
-export type GlobalContext = {
-  components: BaseComponents
+export interface GlobalContext {
+  components: AppComponents
 }
 
 // components used in every environment
 export type BaseComponents = {
+  statusChecks: IBaseComponent
   config: IConfigComponent
   logs: ILoggerComponent
   server: IHttpServerComponent<GlobalContext>
+  fetch: IFetchComponent
   metrics: IMetricsComponent<keyof typeof metricDeclarations>
 }
 

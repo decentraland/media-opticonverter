@@ -1,0 +1,37 @@
+import { HandlerContextWithPath } from '../../types'
+import { MediaConverter } from '../../adapters/media-converter'
+
+export async function convertHandler(
+  context: HandlerContextWithPath<'config' | 'logs' | 'metrics' | 'fetch' | 'server' | 'statusChecks', '/convert'>
+) {
+  const { components, request } = context
+  const body = await request.json()
+  const { fileUrl, ktx2 } = body
+
+  if (!fileUrl) {
+    return {
+      status: 400,
+      body: { error: 'fileUrl is required' }
+    }
+  }
+
+  try {
+    const bucket = await components.config.requireString('S3_BUCKET')
+    const cloudfrontDomain = await components.config.requireString('CLOUDFRONT_DOMAIN')
+    const region = await components.config.requireString('AWS_REGION')
+
+    const converter = new MediaConverter(bucket, cloudfrontDomain, region, components)
+    const result = await converter.convert(fileUrl, ktx2)
+
+    return {
+      status: 200,
+      body: { url: result }
+    }
+  } catch (error) {
+    console.error('Error processing request:', error)
+    return {
+      status: 500,
+      body: { error: error instanceof Error ? error.message : 'Internal server error' }
+    }
+  }
+} 

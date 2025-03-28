@@ -1,44 +1,51 @@
-ARG RUN
-
-FROM node:lts as builderenv
+FROM node:18 AS builderenv
 
 WORKDIR /app
 
-# some packages require a build step
-RUN apt-get update && apt-get -y -qq install build-essential
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    optipng \
+    ffmpeg \
+    curl \
+    bzip2
 
-# We use Tini to handle signals and PID1 (https://github.com/krallin/tini, read why here https://github.com/krallin/tini/issues/8)
-ENV TINI_VERSION v0.19.0
-ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
-RUN chmod +x /tini
+# Download and install precompiled KTX-Software
+RUN curl -L https://github.com/KhronosGroup/KTX-Software/releases/download/v4.3.2/KTX-Software-4.3.2-Linux-x86_64.tar.bz2 -o /tmp/ktx.tar.bz2 && \
+    tar xf /tmp/ktx.tar.bz2 -C /tmp && \
+    cp /tmp/KTX-Software-4.3.2-Linux-x86_64/bin/toktx /usr/local/bin/ && \
+    cp /tmp/KTX-Software-4.3.2-Linux-x86_64/bin/ktx2ktx2 /usr/local/bin/ && \
+    cp /tmp/KTX-Software-4.3.2-Linux-x86_64/lib/libktx.so* /usr/local/lib/ && \
+    rm -rf /tmp/KTX-Software*
 
-# install dependencies
-COPY package.json /app/package.json
-COPY yarn.lock /app/yarn.lock
-RUN yarn
+COPY package*.json /app/
+RUN npm install
 
-# build the app
 COPY . /app
-RUN yarn build
-RUN yarn test
+RUN npm run build
+RUN npm ci --only=production
 
-# remove devDependencies, keep only used dependencies
-RUN yarn install --frozen-lockfile --production
+FROM node:18
 
-########################## END OF BUILD STAGE ##########################
+RUN apt-get update && apt-get install -y \
+    optipng \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
 
-FROM node:lts
-
-# NODE_ENV is used to configure some runtime options, like JSON logger
-ENV NODE_ENV production
+# Copy the static binaries and libraries
+COPY --from=builderenv /usr/local/bin/ktx2ktx2 /usr/local/bin/ktx2ktx2
+COPY --from=builderenv /usr/local/bin/toktx /usr/local/bin/toktx
+COPY --from=builderenv /usr/local/lib/libktx.so* /usr/local/lib/
 
 WORKDIR /app
-COPY --from=builderenv /app /app
-COPY --from=builderenv /tini /tini
-# Please _DO NOT_ use a custom ENTRYPOINT because it may prevent signals
-# (i.e. SIGTERM) to reach the service
-# Read more here: https://aws.amazon.com/blogs/containers/graceful-shutdowns-with-ecs/
-#            and: https://www.ctl.io/developers/blog/post/gracefully-stopping-docker-containers/
-ENTRYPOINT ["/tini", "--"]
-# Run the program under Tini
-CMD [ "/usr/local/bin/node", "--trace-warnings", "--abort-on-uncaught-exception", "--unhandled-rejections=strict", "dist/index.js" ]
+
+COPY --from=builderenv /app/dist /app/dist
+COPY --from=builderenv /app/node_modules /app/node_modules
+
+ENV NODE_ENV=production
+ENV PORT=8000
+ENV PATH="/usr/local/bin:${PATH}"
+ENV LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH}"
+
+EXPOSE 8000
+
+CMD ["node", "dist/index.js"]
