@@ -273,14 +273,19 @@ export class MediaConverter {
               fs.mkdirSync(framesDir)
 
               // Extract frames
-              for (let i = 0; i < frames; i++) {
-                const framePath = path.join(framesDir, `frame_${i}.png`)
-                await sharp(inputPath, { page: i })
+              const targetFrames = Math.ceil(frames * 0.7); // 70% of total frames
+              const step = frames / targetFrames; // Step to evenly sample frames
+              
+              for (let i = 0; i < targetFrames; i++) {
+                const frameIndex = Math.floor(i * step); // Get the frame index
+                const framePath = path.join(framesDir, `frame_${i}.png`);
+              
+                await sharp(inputPath, { page: frameIndex })
                   .resize(512, 512, {
                     fit: 'inside',
                     withoutEnlargement: true
                   })
-                  .toFile(framePath)
+                  .toFile(framePath);
               }
 
               return {
@@ -429,12 +434,60 @@ export class MediaConverter {
 
       // Convert file
       if (config.convertCommand[0] === 'sharp') {
-        await sharp(inputPath)
+        const inputExt = path.extname(inputPath).toLowerCase()
+        let sharpInstance = sharp(inputPath)
           .resize(1024, 1024, {
             fit: 'inside',
             withoutEnlargement: true
           })
-          .toFile(outputPath)
+
+        // Optimize based on input format
+        if (inputExt === '.svg') {
+          // SVG: Use smaller palette and more aggressive compression
+          sharpInstance = sharpInstance.png({
+            compressionLevel: 9,
+            quality: 100,
+            palette: true,
+            colors: 128, // Reduced palette for SVG
+            effort: 10
+          })
+        } else if (inputExt === '.jpg' || inputExt === '.jpeg') {
+          // JPG/JPEG: Use lower quality since it's already lossy
+          sharpInstance = sharpInstance.png({
+            compressionLevel: 9,
+            quality: 85, // Lower quality for JPG/JPEG
+            palette: true,
+            colors: 256,
+            effort: 10
+          })
+        } else if (inputExt === '.webp') {
+          // WebP: Use more aggressive compression and lower quality since it's already lossy
+          sharpInstance = sharpInstance.png({
+            compressionLevel: 9,
+            quality: 60, // Lower quality for WebP
+            palette: true,
+            colors: 128, // Reduced palette for WebP
+            effort: 10
+          })
+        } else {
+          // Default for other formats
+          sharpInstance = sharpInstance.png({
+            compressionLevel: 9,
+            quality: 100,
+            palette: true,
+            colors: 256,
+            effort: 10
+          })
+        }
+
+        await sharpInstance.toFile(outputPath)
+        
+        if (!config.ktx2Command) {
+          // Optimize PNG with optipng
+          const optipngCommand = `optipng -o7 -strip all "${outputPath}"`
+          this.logger.info('Executing optipng command:', { optipngCommand })
+          await execAsync(optipngCommand)
+        }
       } else {
         const convertCommand = config.convertCommand
           .map(cmd => cmd.replace('${input}', inputPath).replace('${output}', outputPath))
@@ -449,49 +502,6 @@ export class MediaConverter {
         throw new Error('Conversion failed: output file not created or is empty')
       }
 
-      // If it's an image, try different formats
-      if (config.mimetype.startsWith('image/')) {
-        const tempJpgPath = path.join(os.tmpdir(), `temp_jpg_${shortHash}.jpg`)
-        const tempPngPath = path.join(os.tmpdir(), `temp_png_${shortHash}.png`)
-        
-        // Convert to JPG
-        await sharp(outputPath)
-          .jpeg({ quality: 85 })
-          .toFile(tempJpgPath)
-        const jpgStats = fs.statSync(tempJpgPath)
-        
-        // Convert to PNG
-        await sharp(outputPath)
-          .png()
-          .toFile(tempPngPath)
-        const pngStats = fs.statSync(tempPngPath)
-        
-        // Choose the smallest format
-        if (jpgStats.size < pngStats.size) {
-          if (fs.existsSync(tempJpgPath) && fs.statSync(tempJpgPath).size > 0) {
-            if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath)
-            if (fs.existsSync(tempPngPath)) fs.unlinkSync(tempPngPath)
-            fs.renameSync(tempJpgPath, outputPath)
-            config.outExt = '.jpg'
-            config.mimetype = 'image/jpeg'
-          } else {
-            if (fs.existsSync(tempJpgPath)) fs.unlinkSync(tempJpgPath)
-            if (fs.existsSync(tempPngPath)) fs.unlinkSync(tempPngPath)
-          }
-        } else {
-          if (fs.existsSync(tempPngPath) && fs.statSync(tempPngPath).size > 0) {
-            if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath)
-            if (fs.existsSync(tempJpgPath)) fs.unlinkSync(tempJpgPath)
-            fs.renameSync(tempPngPath, outputPath)
-            config.outExt = '.png'
-            config.mimetype = 'image/png'
-          } else {
-            if (fs.existsSync(tempJpgPath)) fs.unlinkSync(tempJpgPath)
-            if (fs.existsSync(tempPngPath)) fs.unlinkSync(tempPngPath)
-          }
-        }
-      }
-
       // Convert to KTX2 if enabled
       if (config.ktx2Command) {
         // First convert to PNG as base
@@ -502,7 +512,9 @@ export class MediaConverter {
 
         // First convert to KTX2 with toktx
         const ktx2TempPath = path.join(os.tmpdir(), `temp_ktx2_${shortHash}.ktx2`)
+      //  const toktxCommand = `toktx --t2 --genmipmap --encode uastc --uastc_quality 4 --zcmp 10 "${ktx2TempPath}" "${pngPath}"`
         const toktxCommand = `toktx --bcmp --t2 --genmipmap "${ktx2TempPath}" "${pngPath}"`
+
         
         this.logger.info('Executing toktx command:', { command: toktxCommand })
         const { stdout: toktxOutput, stderr: toktxError } = await execAsync(toktxCommand)
@@ -516,14 +528,6 @@ export class MediaConverter {
         if (size < 100) {
           throw new Error(`File exists but is too small to be a valid .ktx2 (${size} bytes)`);
         }
-
-        // Then optimize with ktx2ktx2 (note: removed --t2 flag as it's not a valid option for ktx2ktx2)
-        //TODO: review this optimization later
-        /*const ktx2Command = `ktx2ktx2 --genmipmap -o "${outputPath}" "${ktx2TempPath}"`
-        
-        this.logger.info('Executing ktx2ktx2 command:', { command: ktx2Command })
-        const { stdout: ktx2Output, stderr: ktx2Error } = await execAsync(ktx2Command)
-        if (ktx2Error) this.logger.info('KTX2 compression stderr:', { error: ktx2Error }) */
 
         // remove this line if then apply optimizations
         outputPath = ktx2TempPath
