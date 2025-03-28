@@ -19,7 +19,7 @@ export async function convertHandler(
     const bucket = await components.config.requireString('S3_BUCKET')
     const cloudfrontDomain = await components.config.requireString('CLOUDFRONT_DOMAIN')
     const region = await components.config.requireString('AWS_REGION')
-    const useLocalStorage = await components.config.getString('USE_LOCAL_STORAGE') === 'true'
+    const useLocalStorage = (await components.config.getString('USE_LOCAL_STORAGE')) === 'true'
 
     const converter = new MediaConverter(bucket, cloudfrontDomain, region, components, useLocalStorage)
     const result = await converter.convert(fileUrl, ktx2)
@@ -35,4 +35,4 @@ export async function convertHandler(
       body: { error: error instanceof Error ? error.message : 'Internal server error' }
     }
   }
-} 
+}
