@@ -34,6 +34,16 @@ export async function convertHandler(
     const converter = new MediaConverter(bucket, cloudfrontDomain, region, components, useLocalStorage)
     const result = await converter.convert(fileUrl, ktx2)
 
+    if (request.method === 'GET') {
+      return {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/plain'
+        },
+        body: result
+      }
+    }
+
     return {
       status: 200,
       body: { url: result }
