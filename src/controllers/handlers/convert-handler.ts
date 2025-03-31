@@ -36,7 +36,7 @@ export async function convertHandler(
 
     if (request.method === 'GET') {
       return {
-        status: 200,
+        status: 302,
         headers: {
           'Content-Type': 'text/plain'
         },
