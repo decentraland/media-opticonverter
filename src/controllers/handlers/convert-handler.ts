@@ -47,7 +47,7 @@ export async function convertHandler(
         status: 302,
         headers: {
           ...corsHeaders,
-          'Location': result,
+          Location: result,
           'Cache-Control': 'public, max-age=31536000'
         }
       }
