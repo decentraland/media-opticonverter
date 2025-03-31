@@ -1,22 +1,16 @@
 import { HandlerContextWithPath } from '../../types'
 import { MediaConverter } from '../../adapters/media-converter'
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type'
+} as const
+
 export async function convertHandler(
   context: HandlerContextWithPath<'config' | 'logs' | 'metrics' | 'fetch' | 'server' | 'statusChecks', '/convert'>
 ) {
   const { components, request } = context
-
-  // Handle OPTIONS request for CORS preflight
-  if (request.method === 'OPTIONS') {
-    return {
-      status: 204,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type'
-      }
-    }
-  }
 
   let fileUrl: string | undefined
   let ktx2: boolean | undefined
@@ -34,11 +28,7 @@ export async function convertHandler(
   if (!fileUrl) {
     return {
       status: 400,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type'
-      },
+      headers: corsHeaders,
       body: { error: 'fileUrl is required' }
     }
   }
@@ -56,10 +46,9 @@ export async function convertHandler(
       return {
         status: 302,
         headers: {
+          ...corsHeaders,
           'Location': result,
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type'
+          'Cache-Control': 'public, max-age=31536000'
         }
       }
     }
@@ -67,9 +56,8 @@ export async function convertHandler(
     return {
       status: 200,
       headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type'
+        ...corsHeaders,
+        'Cache-Control': 'public, max-age=31536000'
       },
       body: { url: result }
     }
@@ -77,11 +65,7 @@ export async function convertHandler(
     console.error('Error processing request:', error)
     return {
       status: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type'
-      },
+      headers: corsHeaders,
       body: { error: error instanceof Error ? error.message : 'Internal server error' }
     }
   }

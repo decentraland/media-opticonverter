@@ -5,6 +5,7 @@ import { createLogComponent } from '@well-known-components/logger'
 import { createMetricsComponent } from '@well-known-components/metrics'
 import { AppComponents } from '../../src/types'
 import { metricDeclarations } from '../../src/metrics'
+import { convertHandler } from '../../src/controllers/handlers/convert-handler'
 import * as path from 'path'
 import * as fs from 'fs'
 import * as http from 'http'
@@ -522,6 +523,42 @@ describe('MediaConverter Unit Tests', () => {
           fs.unlinkSync(path.join(storagePath, file))
         }
       }
+    })
+  })
+
+  describe('GET /convert', () => {
+    it('should return 302 with Location header for successful conversion', async () => {
+      const mockContext = {
+        components,
+        request: new Request(`http://localhost:8000/convert?fileUrl=${encodeURIComponent(testServerUrl + '/png')}`)
+      }
+      const response = await convertHandler(mockContext as any)
+      expect(response.status).toBe(302)
+      const expectedUrl = `http://localhost:8000/storage/${expectedHashes.png}.png`
+      expect(response.headers['Location']).toBe(expectedUrl)
+      expect(response.headers['Access-Control-Allow-Origin']).toBe('*')
+      expect(response.headers['Cache-Control']).toBe('public, max-age=31536000')
+    })
+
+    it('should return 400 when fileUrl is missing', async () => {
+      const mockContext = {
+        components,
+        request: new Request('http://localhost:8000/convert')
+      }
+      const response = await convertHandler(mockContext as any)
+      expect(response.status).toBe(400)
+      expect(response.body?.error).toBe('fileUrl is required')
+    })
+
+    it('should handle CORS headers correctly', async () => {
+      const mockContext = {
+        components,
+        request: new Request(`http://localhost:8000/convert?fileUrl=${encodeURIComponent(testServerUrl + '/png')}`)
+      }
+      const response = await convertHandler(mockContext as any)
+      expect(response.headers['Access-Control-Allow-Origin']).toBe('*')
+      expect(response.headers['Access-Control-Allow-Methods']).toBe('GET, POST, OPTIONS')
+      expect(response.headers['Access-Control-Allow-Headers']).toBe('Content-Type')
     })
   })
 })
