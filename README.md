@@ -78,8 +78,41 @@ npm run test:docker
 
 ## API Endpoints
 
+### GET /convert
+Converts a media file to the appropriate format and returns a 302 redirect to the converted file.
+
+**Query Parameters:**
+- `fileUrl`: URL of the file to convert
+- `ktx2`: (optional) Set to 'true' to convert to KTX2 format
+
+**Response:**
+- Status: 302 (Redirect)
+- Headers:
+  - `Location`: URL of the converted file
+  - `Access-Control-Allow-Origin`: '*'
+  - `Cache-Control`: 'public, max-age=31536000'
+
+**Examples:**
+```bash
+# Convert a PNG to WebP
+curl "http://localhost:8000/convert?fileUrl=http://localhost:8000/test/assets/test.png"
+# Response: 302 redirect to http://localhost:8000/storage/[hash].png
+
+# Convert an animated GIF to MP4
+curl "http://localhost:8000/convert?fileUrl=http://localhost:8000/test/assets/test.gif"
+# Response: 302 redirect to http://localhost:8000/storage/[hash].mp4
+
+# Convert a WebP to PNG
+curl "http://localhost:8000/convert?fileUrl=http://localhost:8000/test/assets/test.webp"
+# Response: 302 redirect to http://localhost:8000/storage/[hash].png
+
+# Convert an SVG to KTX2
+curl "http://localhost:8000/convert?fileUrl=http://localhost:8000/test/assets/test.svg&ktx2=true"
+# Response: 302 redirect to http://localhost:8000/storage/[hash].ktx2
+```
+
 ### POST /convert
-Convert a media file to a different format.
+Converts a media file to the appropriate format and returns the URL of the converted file.
 
 **Request Body:**
 ```json
@@ -128,42 +161,13 @@ curl -X POST http://localhost:8000/convert \
   }'
 ```
 
-### GET /convert
-Convert a media file to a different format using query parameters.
-
-**Query Parameters:**
-- `fileUrl`: URL of the file to convert
-- `ktx2`: Optional boolean to enable KTX2 conversion (default: false)
-
-**Response:**
-```json
-{
-  "url": "string"  // URL of the converted file
-}
-```
-
-**Examples:**
-```bash
-# Convert a PNG to WebP
-curl "http://localhost:8000/convert?fileUrl=http://localhost:8000/test/assets/test.png"
-
-# Convert an animated GIF to MP4
-curl "http://localhost:8000/convert?fileUrl=http://localhost:8000/test/assets/test.gif"
-
-# Convert a WebP to PNG
-curl "http://localhost:8000/convert?fileUrl=http://localhost:8000/test/assets/test.webp"
-
-# Convert an SVG to KTX2
-curl "http://localhost:8000/convert?fileUrl=http://localhost:8000/test/assets/test.svg&ktx2=true"
-```
-
 ### GET /ping
 Health check endpoint.
 
 **Response:**
 ```json
 {
-  "status": 200
+  "status": "ok"
 }
 ```
 
