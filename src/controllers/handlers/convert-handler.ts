@@ -5,8 +5,18 @@ export async function convertHandler(
   context: HandlerContextWithPath<'config' | 'logs' | 'metrics' | 'fetch' | 'server' | 'statusChecks', '/convert'>
 ) {
   const { components, request } = context
-  const body = await request.json()
-  const { fileUrl, ktx2 } = body
+  let fileUrl: string | undefined
+  let ktx2: boolean | undefined
+
+  if (request.method === 'GET') {
+    const url = new URL(request.url)
+    fileUrl = url.searchParams.get('fileUrl') || undefined
+    ktx2 = url.searchParams.get('ktx2') === 'true'
+  } else {
+    const body = await request.json()
+    fileUrl = body.fileUrl
+    ktx2 = body.ktx2
+  }
 
   if (!fileUrl) {
     return {
