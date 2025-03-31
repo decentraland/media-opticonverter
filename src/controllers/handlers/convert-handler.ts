@@ -5,6 +5,19 @@ export async function convertHandler(
   context: HandlerContextWithPath<'config' | 'logs' | 'metrics' | 'fetch' | 'server' | 'statusChecks', '/convert'>
 ) {
   const { components, request } = context
+
+  // Handle OPTIONS request for CORS preflight
+  if (request.method === 'OPTIONS') {
+    return {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      }
+    }
+  }
+
   let fileUrl: string | undefined
   let ktx2: boolean | undefined
 
@@ -21,6 +34,11 @@ export async function convertHandler(
   if (!fileUrl) {
     return {
       status: 400,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      },
       body: { error: 'fileUrl is required' }
     }
   }
@@ -38,20 +56,32 @@ export async function convertHandler(
       return {
         status: 302,
         headers: {
-          'Content-Type': 'text/plain'
-        },
-        body: result
+          'Location': result,
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type'
+        }
       }
     }
 
     return {
       status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      },
       body: { url: result }
     }
   } catch (error) {
     console.error('Error processing request:', error)
     return {
       status: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      },
       body: { error: error instanceof Error ? error.message : 'Internal server error' }
     }
   }
