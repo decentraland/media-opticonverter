@@ -28,7 +28,16 @@ export class MediaConverter {
   ) {
     this.bucket = bucket
     this.cloudfrontDomain = cloudfrontDomain
-    this.s3Client = useLocalStorage ? null : new S3Client({ region })
+    this.s3Client = useLocalStorage ? null : new S3Client({
+      region,
+      maxAttempts: 3,
+      requestHandler: {
+        connectionTimeout: 5000, // 5 seconds
+        socketTimeout: 60000,    // 30 seconds
+        keepAlive: true,
+        keepAliveMsecs: 1000
+      }
+    })
     this.components = components
     this.logger = components.logs.getLogger('media-converter')
     this.useLocalStorage = useLocalStorage
@@ -488,13 +497,6 @@ export class MediaConverter {
         }
 
         await sharpInstance.toFile(outputPath)
-
-        if (!config.ktx2Command) {
-          // Optimize PNG with optipng
-          const optipngCommand = `optipng -o7 -strip all "${outputPath}"`
-          this.logger.info('Executing optipng command:', { optipngCommand })
-          await execAsync(optipngCommand)
-        }
       } else {
         const convertCommand = config.convertCommand
           .map((cmd) => cmd.replace('${input}', inputPath).replace('${output}', outputPath))
