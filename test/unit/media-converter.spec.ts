@@ -422,7 +422,6 @@ describe('MediaConverter Unit Tests', () => {
       // Verify file size is smaller than original
       const resultSize = fs.statSync(storagePath).size
       expect(resultSize).toBeLessThan(originalFileSizes.gif)
-      console.log('size for gif, result and then original', resultSize, originalFileSizes.gif)
 
       // Verify dimensions are within limits
       const dimensions = await getDimensions(storagePath)

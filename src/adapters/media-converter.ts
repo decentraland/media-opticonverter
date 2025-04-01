@@ -521,7 +521,7 @@ export class MediaConverter {
 
         // First convert to KTX2 with toktx
         const ktx2TempPath = path.join(os.tmpdir(), `temp_ktx2_${shortHash}.ktx2`)
-        //  const toktxCommand = `toktx --t2 --genmipmap --encode uastc --uastc_quality 4 --zcmp 10 "${ktx2TempPath}" "${pngPath}"`
+        
         const toktxCommand = `toktx --bcmp --t2 --genmipmap "${ktx2TempPath}" "${pngPath}"`
 
         this.logger.info('Executing toktx command:', { command: toktxCommand })
