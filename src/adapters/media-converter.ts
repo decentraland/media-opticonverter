@@ -28,16 +28,18 @@ export class MediaConverter {
   ) {
     this.bucket = bucket
     this.cloudfrontDomain = cloudfrontDomain
-    this.s3Client = useLocalStorage ? null : new S3Client({
-      region,
-      maxAttempts: 3,
-      requestHandler: {
-        connectionTimeout: 5000, // 5 seconds
-        socketTimeout: 60000,    // 30 seconds
-        keepAlive: true,
-        keepAliveMsecs: 1000
-      }
-    })
+    this.s3Client = useLocalStorage
+      ? null
+      : new S3Client({
+          region,
+          maxAttempts: 3,
+          requestHandler: {
+            connectionTimeout: 5000, // 5 seconds
+            socketTimeout: 60000, // 30 seconds
+            keepAlive: true,
+            keepAliveMsecs: 1000
+          }
+        })
     this.components = components
     this.logger = components.logs.getLogger('media-converter')
     this.useLocalStorage = useLocalStorage
