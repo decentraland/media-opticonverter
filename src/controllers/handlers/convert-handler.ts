@@ -35,7 +35,7 @@ export async function convertHandler(
 
   try {
     const useLocalStorage = (await components.config.getString('USE_LOCAL_STORAGE')) === 'true'
-    
+
     let bucket = ''
     let cloudfrontDomain = ''
     let region = ''

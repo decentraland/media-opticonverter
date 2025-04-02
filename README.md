@@ -48,6 +48,12 @@ For local storage mode:
 npm run start:local
 ```
 
+or with Docker (docker-compose)
+
+```bash
+npm run start:local:docker
+```
+
 ### Docker
 
 1. Build the Docker image:
