@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  media-opticonverter:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - USE_LOCAL_STORAGE=true
+      - PORT=8000
+      - HTTP_SERVER_PORT=8000
+      - HTTP_SERVER_HOST=0.0.0.0
+    volumes:
+      - ./storage:/app/storage 

@@ -34,10 +34,17 @@ export async function convertHandler(
   }
 
   try {
-    const bucket = await components.config.requireString('S3_BUCKET')
-    const cloudfrontDomain = await components.config.requireString('CLOUDFRONT_DOMAIN')
-    const region = await components.config.requireString('AWS_REGION')
     const useLocalStorage = (await components.config.getString('USE_LOCAL_STORAGE')) === 'true'
+    
+    let bucket = ''
+    let cloudfrontDomain = ''
+    let region = ''
+
+    if (!useLocalStorage) {
+      bucket = await components.config.requireString('S3_BUCKET')
+      cloudfrontDomain = await components.config.requireString('CLOUDFRONT_DOMAIN')
+      region = await components.config.requireString('AWS_REGION')
+    }
 
     const converter = new MediaConverter(bucket, cloudfrontDomain, region, components, useLocalStorage)
     const result = await converter.convert(fileUrl, ktx2)

@@ -3,7 +3,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node --trace-warnings --abort-on-uncaught-exception --unhandled-rejections=strict dist/index.js",
-    "start:local": "USE_LOCAL_STORAGE=true node --trace-warnings --abort-on-uncaught-exception --unhandled-rejections=strict dist/index.js",
+    "start:docker": "docker-compose down && DOCKER_DEFAULT_PLATFORM=linux/amd64 docker-compose build && docker-compose up",
+    "start:local": "npm run start:docker",
     "test:base": "jest --forceExit --detectOpenHandles --coverage",
     "test": "./scripts/test.sh",
     "lint:check": "eslint '**/*.{js,ts}'",
