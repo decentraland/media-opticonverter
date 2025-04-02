@@ -310,17 +310,32 @@ export class MediaConverter {
               // Extract frames
               const targetFrames = Math.ceil(frames * 0.7) // 70% of total frames
               const step = frames / targetFrames // Step to evenly sample frames
+              // Process frames in parallel with a concurrency limit of 10
+              const framePromises = []
+              const concurrencyLimit = 100
 
               for (let i = 0; i < targetFrames; i++) {
                 const frameIndex = Math.floor(i * step) // Get the frame index
                 const framePath = path.join(framesDir, `frame_${i}.png`)
+                framePromises.push(
+                  sharp(inputPath, { page: frameIndex })
+                    .resize(512, 512, {
+                      fit: 'inside',
+                      withoutEnlargement: true
+                    })
+                    .toFile(framePath)
+                )
 
-                await sharp(inputPath, { page: frameIndex })
-                  .resize(512, 512, {
-                    fit: 'inside',
-                    withoutEnlargement: true
-                  })
-                  .toFile(framePath)
+                // Process in batches of 10 to avoid memory issues
+                if (framePromises.length === concurrencyLimit) {
+                  await Promise.all(framePromises)
+                  framePromises.length = 0
+                }
+              }
+
+              // Process remaining frames
+              if (framePromises.length > 0) {
+                await Promise.all(framePromises)
               }
 
               return {
@@ -516,12 +531,16 @@ export class MediaConverter {
       // Convert to KTX2 if enabled
       if (config.ktx2Command) {
         // First convert to PNG as base
-        const pngPath = path.join(os.tmpdir(), `temp_png_${shortHash}.png`)
-        await sharp(outputPath).png().toFile(pngPath)
+        let pngPath = path.join(os.tmpdir(), `temp_png_${shortHash}.png`)
+        if (ext !== '.png') {
+          await sharp(outputPath).png().toFile(pngPath)
+        } else {
+          pngPath = outputPath
+        }
 
         // First convert to KTX2 with toktx
         const ktx2TempPath = path.join(os.tmpdir(), `temp_ktx2_${shortHash}.ktx2`)
-        
+
         const toktxCommand = `toktx --bcmp --t2 --genmipmap "${ktx2TempPath}" "${pngPath}"`
 
         this.logger.info('Executing toktx command:', { command: toktxCommand })
