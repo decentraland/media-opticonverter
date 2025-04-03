@@ -387,7 +387,11 @@ export class MediaConverter {
     }
   }
 
-  public async convert(fileUrl: string, ktx2Enabled: boolean = false, preProcessToPNG: boolean = false): Promise<string> {
+  public async convert(
+    fileUrl: string,
+    ktx2Enabled: boolean = false,
+    preProcessToPNG: boolean = false
+  ): Promise<string> {
     let tempInputPath = ''
     let outputPath = ''
 
