@@ -253,22 +253,11 @@ export class MediaConverter {
 
     switch (normalizedExt) {
       case '.svg': {
-        const svgBaseConfig = {
-          outExt: '.png',
-          mimetype: 'image/png',
+        return {
+          outExt: ktx2Enabled ? '.ktx2' : '.png',
+          mimetype: ktx2Enabled ? 'image/ktx2' : 'image/png',
           convertCommand: ['sharp', '${input}', '${output}']
         }
-
-        if (ktx2Enabled) {
-          return {
-            ...svgBaseConfig,
-            outExt: '.ktx2',
-            mimetype: 'image/ktx2',
-            ktx2Command: ['ktx2ktx2', '--genmipmap', '--t2', '-o', '${output}', '${output}.ktx2']
-          }
-        }
-
-        return svgBaseConfig
       }
 
       case '.gif': {
@@ -371,43 +360,26 @@ export class MediaConverter {
           }
         }
 
-        const baseConfig = {
-          outExt: '.png',
-          mimetype: 'image/png',
+        return {
+          outExt: ktx2Enabled ? '.ktx2' : '.png',
+          mimetype: ktx2Enabled ? 'image/ktx2' : 'image/png',
           convertCommand: ['sharp', '${input}', '${output}']
         }
-
-        if (ktx2Enabled) {
-          return {
-            ...baseConfig,
-            outExt: '.ktx2',
-            mimetype: 'image/ktx2',
-            ktx2Command: ['toktx', '--t2', '${output}', '${output}.png']
-          }
-        }
-
-        return baseConfig
       }
 
       case '.jpg':
       case '.jpeg':
-      case '.png': {
-        const baseConfig = {
-          outExt: '.png',
-          mimetype: 'image/png',
+        return {
+          outExt: ktx2Enabled ? '.ktx2' : '.jpg',
+          mimetype: ktx2Enabled ? 'image/ktx2' : 'image/jpeg',
           convertCommand: ['sharp', '${input}', '${output}']
         }
-
-        if (ktx2Enabled) {
-          return {
-            ...baseConfig,
-            outExt: '.ktx2',
-            mimetype: 'image/ktx2',
-            ktx2Command: ['toktx', '--t2', '${output}', '${output}.png']
-          }
+      case '.png': {
+        return {
+          outExt: ktx2Enabled ? '.ktx2' : '.png',
+          mimetype: ktx2Enabled ? 'image/ktx2' : 'image/png',
+          convertCommand: ['sharp', '${input}', '${output}']
         }
-
-        return baseConfig
       }
 
       default:
@@ -415,9 +387,8 @@ export class MediaConverter {
     }
   }
 
-  public async convert(fileUrl: string, ktx2Enabled: boolean = false): Promise<string> {
+  public async convert(fileUrl: string, ktx2Enabled: boolean = false, preProcessToPNG: boolean = false): Promise<string> {
     let tempInputPath = ''
-    let inputPath = ''
     let outputPath = ''
 
     try {
@@ -460,133 +431,111 @@ export class MediaConverter {
 
       storageKey = `${shortHash}${config.outExt}`
       outputPath = path.join(os.tmpdir(), `output_${shortHash}${config.outExt}`)
-      inputPath = path.join(os.tmpdir(), `input_${shortHash}${ext}`)
-
-      // Move temp file to input path
-      fs.renameSync(tempInputPath, inputPath)
-      tempInputPath = ''
 
       // Convert file
       if (config.convertCommand[0] === 'sharp') {
-        const inputExt = path.extname(inputPath).toLowerCase()
-        let sharpInstance = sharp(inputPath).resize(1024, 1024, {
+        const sharpInstance = sharp(tempInputPath).resize(1024, 1024, {
           fit: 'inside',
           withoutEnlargement: true
         })
 
         // Optimize based on input format
-        if (inputExt === '.svg') {
+        if (ext === '.svg' || ext === '.webp') {
           // SVG: Use smaller palette and more aggressive compression
-          sharpInstance = sharpInstance.png({
-            compressionLevel: 9,
-            quality: 100,
-            palette: true,
-            colors: 128, // Reduced palette for SVG
-            effort: 10
-          })
-        } else if (inputExt === '.jpg' || inputExt === '.jpeg') {
-          // JPG/JPEG: Use lower quality since it's already lossy
-          sharpInstance = sharpInstance.png({
-            compressionLevel: 9,
-            quality: 85, // Lower quality for JPG/JPEG
-            palette: true,
-            colors: 256,
-            effort: 10
-          })
-        } else if (inputExt === '.webp') {
-          // WebP: Use more aggressive compression and lower quality since it's already lossy
-          sharpInstance = sharpInstance.png({
-            compressionLevel: 9,
-            quality: 60, // Lower quality for WebP
-            palette: true,
-            colors: 128, // Reduced palette for WebP
-            effort: 10
-          })
-        } else {
+          await sharpInstance
+            .png({
+              compressionLevel: 9,
+              quality: 80,
+              palette: true,
+              colors: 128, // Reduced palette for SVG
+              effort: 10
+            })
+            .withIccProfile('none')
+            .toFile(outputPath)
+        } else if ((ext === '.jpg' || ext === '.jpeg') && !ktx2Enabled) {
+          await sharpInstance
+            .jpeg({
+              mozjpeg: true, // Use mozjpeg optimization
+              quality: 80, // Lower quality for JPG/JPEG
+              progressive: true, // Progressive loading
+              optimizeCoding: true, // Optimize Huffman coding tables
+              quantisationTable: 0, // Use default quantization table
+              force: false // Force JPEG output even if input is JPEG
+            })
+            .toFile(outputPath)
+        } else if (!ktx2Enabled || preProcessToPNG) {
           // Default for other formats
-          sharpInstance = sharpInstance.png({
-            compressionLevel: 9,
-            quality: 100,
-            palette: true,
-            colors: 256,
-            effort: 10
-          })
+          await sharpInstance
+            .png({
+              compressionLevel: 9,
+              quality: 80,
+              palette: true,
+              colors: 256,
+              effort: 10
+            })
+            .toFile(outputPath)
         }
 
-        await sharpInstance.toFile(outputPath)
-      } else {
+        if (ktx2Enabled) {
+          // Get image dimensions and calculate resize only for PNG, JPG and JPEG
+          let resizeParams = ''
+          if (['.png', '.jpg', '.jpeg'].includes(ext.toLowerCase()) && !preProcessToPNG) {
+            // use input file and remove ICC profile
+            await sharp(tempInputPath).withIccProfile('none').toFile(outputPath)
+            const metadata = await sharp(outputPath).metadata()
+            const { width, height } = metadata
+            let resizeWidth = width
+            let resizeHeight = height
+
+            if (width && height) {
+              if (width > height) {
+                resizeWidth = 1024
+                resizeHeight = Math.round((height * 1024) / width)
+              } else {
+                resizeHeight = 1024
+                resizeWidth = Math.round((width * 1024) / height)
+              }
+              resizeParams = `--resize ${resizeWidth}x${resizeHeight}`
+            }
+          }
+
+          // First convert to KTX2 with toktx
+          const ktx2TempPath = path.join(os.tmpdir(), `temp_ktx2_${shortHash}.ktx2`)
+
+          const toktxCommand = `toktx --bcmp --t2 --genmipmap  --assign_oetf srgb ${resizeParams} "${ktx2TempPath}" "${outputPath}"`
+
+          this.logger.info('Executing toktx command:', { command: toktxCommand })
+          const { stdout: _, stderr: toktxError } = await execAsync(toktxCommand)
+          if (toktxError) this.logger.info('Toktx conversion stderr:', { error: toktxError })
+
+          if (!fs.existsSync(ktx2TempPath)) {
+            throw new Error(`File not found: ${ktx2TempPath}`)
+          }
+
+          const size = fs.statSync(ktx2TempPath).size
+          if (size < 100) {
+            throw new Error(`File exists but is too small to be a valid .ktx2 (${size} bytes)`)
+          }
+
+          // remove this line if then apply optimizations
+          outputPath = ktx2TempPath
+        }
+      } else if (config.convertCommand[0] === 'ffmpeg') {
+        // ffmpeg c
         const convertCommand = config.convertCommand
-          .map((cmd) => cmd.replace('${input}', inputPath).replace('${output}', outputPath))
+          .map((cmd) => cmd.replace('${input}', tempInputPath).replace('${output}', outputPath))
           .join(' ')
 
         const { stdout: _, stderr: convertError } = await execAsync(convertCommand)
         if (convertError) this.logger.info('Conversion stderr:', { error: convertError })
+      } else {
+        throw new Error(`Unsupported conversion command: ${config.convertCommand[0]}`)
       }
 
       // Verify converted file
       if (!fs.existsSync(outputPath) || fs.statSync(outputPath).size === 0) {
         throw new Error('Conversion failed: output file not created or is empty')
       }
-
-      // Convert to KTX2 if enabled
-      if (config.ktx2Command) {
-        // First convert to PNG as base
-        let pngPath = path.join(os.tmpdir(), `temp_png_${shortHash}.png`)
-        if (ext !== '.png') {
-          await sharp(outputPath).png().toFile(pngPath)
-        } else {
-          pngPath = outputPath
-        }
-
-        // First convert to KTX2 with toktx
-        const ktx2TempPath = path.join(os.tmpdir(), `temp_ktx2_${shortHash}.ktx2`)
-
-        const toktxCommand = `toktx --bcmp --t2 --genmipmap "${ktx2TempPath}" "${pngPath}"`
-
-        this.logger.info('Executing toktx command:', { command: toktxCommand })
-        const { stdout: _, stderr: toktxError } = await execAsync(toktxCommand)
-        if (toktxError) this.logger.info('Toktx conversion stderr:', { error: toktxError })
-
-        if (!fs.existsSync(ktx2TempPath)) {
-          throw new Error(`File not found: ${ktx2TempPath}`)
-        }
-
-        const size = fs.statSync(ktx2TempPath).size
-        if (size < 100) {
-          throw new Error(`File exists but is too small to be a valid .ktx2 (${size} bytes)`)
-        }
-
-        // remove this line if then apply optimizations
-        outputPath = ktx2TempPath
-
-        // Clean up temporary files
-        if (fs.existsSync(outputPath) && fs.statSync(outputPath).size > 0) {
-          if (fs.existsSync(pngPath)) fs.unlinkSync(pngPath)
-          //if (fs.existsSync(ktx2TempPath)) fs.unlinkSync(ktx2TempPath)
-        } else {
-          if (fs.existsSync(pngPath)) fs.unlinkSync(pngPath)
-          //if (fs.existsSync(ktx2TempPath)) fs.unlinkSync(ktx2TempPath)
-          throw new Error('KTX2 conversion failed')
-        }
-      }
-
-      // Optimize if file is large
-      if (config.optimizeCommand && fs.statSync(outputPath).size > 500 * 1024) {
-        const optimizeCommand = config.optimizeCommand.map((cmd) => cmd.replace('${output}', outputPath)).join(' ')
-
-        this.logger.info('Optimizing large file with command', { optimizeCommand })
-
-        const { stdout: _, stderr: optimizeError } = await execAsync(optimizeCommand)
-        if (optimizeError) this.logger.info('Optimization stderr:', { error: optimizeError })
-
-        if (config.mimetype === 'image/png') {
-          const optipngCommand = `optipng -o1 "${outputPath}"`
-          this.logger.info('Optimizing png file with command', { optipngCommand })
-          const { stdout: _, stderr: optipngError } = await execAsync(optipngCommand)
-          if (optipngError) this.logger.info('optipng stderr:', { error: optipngError })
-        }
-      }
-
       // Upload to storage and check if file already existed
       const fileAlreadyExists = await this.uploadFile(storageKey, outputPath, config.mimetype)
       if (fileAlreadyExists) {
@@ -600,9 +549,6 @@ export class MediaConverter {
     } finally {
       // Clean up files
       try {
-        if (inputPath && fs.existsSync(inputPath)) {
-          fs.unlinkSync(inputPath)
-        }
         if (outputPath && fs.existsSync(outputPath)) {
           fs.unlinkSync(outputPath)
         }
