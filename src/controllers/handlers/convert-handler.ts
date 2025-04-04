@@ -14,15 +14,18 @@ export async function convertHandler(
 
   let fileUrl: string | undefined
   let ktx2: boolean | undefined
+  let preProcessToPNG: boolean | undefined
 
   if (request.method === 'GET') {
     const url = new URL(request.url)
     fileUrl = url.searchParams.get('fileUrl') || undefined
     ktx2 = url.searchParams.get('ktx2') === 'true'
+    preProcessToPNG = url.searchParams.get('preProcessToPNG') === 'true'
   } else {
     const body = await request.json()
     fileUrl = body.fileUrl
     ktx2 = body.ktx2
+    preProcessToPNG = body.preProcessToPNG
   }
 
   if (!fileUrl) {
@@ -46,8 +49,8 @@ export async function convertHandler(
       region = await components.config.requireString('AWS_REGION')
     }
 
-    const converter = new MediaConverter(bucket, cloudfrontDomain, region, components, useLocalStorage)
-    const result = await converter.convert(fileUrl, ktx2)
+    const converter = MediaConverter.getInstance(bucket, cloudfrontDomain, region, components, useLocalStorage)
+    const result = await converter.convert(fileUrl, ktx2, preProcessToPNG)
 
     if (request.method === 'GET') {
       return {
@@ -70,6 +73,20 @@ export async function convertHandler(
     }
   } catch (error) {
     console.error('Error processing request:', error)
+    if (error instanceof Error && error.message.includes('Processing hash already exists')) {
+      return {
+        status: 429,
+        headers: {
+          ...corsHeaders,
+          'Retry-After': '30', // 5 seconds
+          'Cache-Control': 'no-cache'
+        },
+        body: {
+          error: error.message,
+          retryAfter: 5
+        }
+      }
+    }
     return {
       status: 500,
       headers: corsHeaders,

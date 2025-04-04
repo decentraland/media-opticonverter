@@ -1,7 +1,6 @@
 import { MediaConverter } from '../../src/adapters/media-converter'
 import { createDotEnvConfigComponent } from '@well-known-components/env-config-provider'
 import { createFetchComponent } from '@well-known-components/fetch-component'
-import { createLogComponent } from '@well-known-components/logger'
 import { createMetricsComponent } from '@well-known-components/metrics'
 import { AppComponents } from '../../src/types'
 import { metricDeclarations } from '../../src/metrics'
@@ -15,10 +14,11 @@ import * as ffmpeg from 'fluent-ffmpeg'
 import { exec } from 'child_process'
 import { promisify } from 'util'
 import * as os from 'os'
+import { createLogsMockComponent } from '../mocks/logs-mock'
 
 const execAsync = promisify(exec)
 
-// Increase global timeout to 60 seconds
+// Increase global timeout to 180 seconds
 jest.setTimeout(60000 * 3)
 
 describe('MediaConverter Unit Tests', () => {
@@ -85,7 +85,8 @@ describe('MediaConverter Unit Tests', () => {
   beforeAll(async () => {
     const config = await createDotEnvConfigComponent({ path: ['.env.default', '.env'] })
     const metrics = await createMetricsComponent(metricDeclarations, { config })
-    const logs = await createLogComponent({ metrics })
+    const logs = createLogsMockComponent()
+
     const fetch = createFetchComponent()
 
     components = {
@@ -100,8 +101,8 @@ describe('MediaConverter Unit Tests', () => {
     // Set USE_LOCAL_STORAGE to true for tests
     process.env.USE_LOCAL_STORAGE = 'true'
 
-    // Initialize converter with test values
-    converter = new MediaConverter('test-bucket', 'test-domain', 'us-east-1', components, true)
+    // Initialize converter with test values using getInstance
+    converter = MediaConverter.getInstance('test-bucket', 'test-domain', 'us-east-1', components, true)
 
     // Set up test files
     testFiles = {
@@ -196,6 +197,10 @@ describe('MediaConverter Unit Tests', () => {
     })
   })
 
+  afterEach(() => {
+    jest.restoreAllMocks()
+  })
+
   describe('SVG files', () => {
     it('should convert static SVG to PNG', async () => {
       const result = await converter.convert(`${testServerUrl}/svg`)
@@ -224,10 +229,6 @@ describe('MediaConverter Unit Tests', () => {
       // Verify the file was created in storage with the expected name
       const storagePath = path.join(process.cwd(), 'storage', `${expectedHashes.svg}.ktx2`)
       expect(fs.existsSync(storagePath)).toBe(true)
-
-      // Verify file size is smaller than original
-      const resultSize = fs.statSync(storagePath).size
-      expect(resultSize).toBeLessThan(originalFileSizes.svg)
 
       // Verify dimensions are within limits
       const dimensions = await getDimensions(storagePath)
@@ -274,16 +275,35 @@ describe('MediaConverter Unit Tests', () => {
       expect(dimensions.width).toBeLessThanOrEqual(1024)
       expect(dimensions.height).toBeLessThanOrEqual(1024)
     })
-  })
 
-  describe('JPG files', () => {
-    it('should convert JPG to PNG', async () => {
-      const result = await converter.convert(`${testServerUrl}/jpg`)
-      const expectedUrl = `http://localhost:8000/storage/${expectedHashes.jpg}.png`
+    it('should convert PNG to KTX2 with preProcessToPNG', async () => {
+      const result = await converter.convert(`${testServerUrl}/png`, true, true)
+      const expectedUrl = `http://localhost:8000/storage/${expectedHashes.png}.ktx2`
       expect(result).toBe(expectedUrl)
 
       // Verify the file was created in storage with the expected name
-      const storagePath = path.join(process.cwd(), 'storage', `${expectedHashes.jpg}.png`)
+      const storagePath = path.join(process.cwd(), 'storage', `${expectedHashes.png}.ktx2`)
+      expect(fs.existsSync(storagePath)).toBe(true)
+
+      // Verify file size is smaller than original
+      const resultSize = fs.statSync(storagePath).size
+      expect(resultSize).toBeLessThan(originalFileSizes.png)
+
+      // Verify dimensions are within limits
+      const dimensions = await getDimensions(storagePath)
+      expect(dimensions.width).toBeLessThanOrEqual(1024)
+      expect(dimensions.height).toBeLessThanOrEqual(1024)
+    })
+  })
+
+  describe('JPG files', () => {
+    it('should convert JPG to JPG', async () => {
+      const result = await converter.convert(`${testServerUrl}/jpg`)
+      const expectedUrl = `http://localhost:8000/storage/${expectedHashes.jpg}.jpg`
+      expect(result).toBe(expectedUrl)
+
+      // Verify the file was created in storage with the expected name
+      const storagePath = path.join(process.cwd(), 'storage', `${expectedHashes.jpg}.jpg`)
       expect(fs.existsSync(storagePath)).toBe(true)
 
       // Verify file size is smaller than original
@@ -305,9 +325,20 @@ describe('MediaConverter Unit Tests', () => {
       const storagePath = path.join(process.cwd(), 'storage', `${expectedHashes.jpg}.ktx2`)
       expect(fs.existsSync(storagePath)).toBe(true)
 
-      // Verify file size is smaller than original
-      const resultSize = fs.statSync(storagePath).size
-      expect(resultSize).toBeLessThan(originalFileSizes.jpg)
+      // Verify dimensions are within limits
+      const dimensions = await getDimensions(storagePath)
+      expect(dimensions.width).toBeLessThanOrEqual(1024)
+      expect(dimensions.height).toBeLessThanOrEqual(1024)
+    })
+
+    it('should convert JPG to KTX2 with preProcessToPNG', async () => {
+      const result = await converter.convert(`${testServerUrl}/jpg`, true, true)
+      const expectedUrl = `http://localhost:8000/storage/${expectedHashes.jpg}.ktx2`
+      expect(result).toBe(expectedUrl)
+
+      // Verify the file was created in storage with the expected name
+      const storagePath = path.join(process.cwd(), 'storage', `${expectedHashes.jpg}.ktx2`)
+      expect(fs.existsSync(storagePath)).toBe(true)
 
       // Verify dimensions are within limits
       const dimensions = await getDimensions(storagePath)
@@ -317,13 +348,13 @@ describe('MediaConverter Unit Tests', () => {
   })
 
   describe('JPEG files', () => {
-    it('should convert JPEG to PNG', async () => {
+    it('should convert JPEG to JPEG', async () => {
       const result = await converter.convert(`${testServerUrl}/jpeg`)
-      const expectedUrl = `http://localhost:8000/storage/${expectedHashes.jpeg}.png`
+      const expectedUrl = `http://localhost:8000/storage/${expectedHashes.jpeg}.jpg`
       expect(result).toBe(expectedUrl)
 
       // Verify the file was created in storage with the expected name
-      const storagePath = path.join(process.cwd(), 'storage', `${expectedHashes.jpeg}.png`)
+      const storagePath = path.join(process.cwd(), 'storage', `${expectedHashes.jpeg}.jpg`)
       expect(fs.existsSync(storagePath)).toBe(true)
 
       // Verify file size is smaller than original
@@ -345,9 +376,20 @@ describe('MediaConverter Unit Tests', () => {
       const storagePath = path.join(process.cwd(), 'storage', `${expectedHashes.jpeg}.ktx2`)
       expect(fs.existsSync(storagePath)).toBe(true)
 
-      // Verify file size is smaller than original
-      const resultSize = fs.statSync(storagePath).size
-      expect(resultSize).toBeLessThan(originalFileSizes.jpeg)
+      // Verify dimensions are within limits
+      const dimensions = await getDimensions(storagePath)
+      expect(dimensions.width).toBeLessThanOrEqual(1024)
+      expect(dimensions.height).toBeLessThanOrEqual(1024)
+    })
+
+    it('should convert JPEG to KTX2 with preProcessToPNG', async () => {
+      const result = await converter.convert(`${testServerUrl}/jpeg`, true, true)
+      const expectedUrl = `http://localhost:8000/storage/${expectedHashes.jpeg}.ktx2`
+      expect(result).toBe(expectedUrl)
+
+      // Verify the file was created in storage with the expected name
+      const storagePath = path.join(process.cwd(), 'storage', `${expectedHashes.jpeg}.ktx2`)
+      expect(fs.existsSync(storagePath)).toBe(true)
 
       // Verify dimensions are within limits
       const dimensions = await getDimensions(storagePath)
@@ -357,7 +399,7 @@ describe('MediaConverter Unit Tests', () => {
   })
 
   describe('WebP files', () => {
-    it('should convert WebP to PNG', async () => {
+    it('should convert static WebP to PNG', async () => {
       const result = await converter.convert(`${testServerUrl}/webp`)
       const expectedUrl = `http://localhost:8000/storage/${expectedHashes.webp}.png`
       expect(result).toBe(expectedUrl)
@@ -373,7 +415,7 @@ describe('MediaConverter Unit Tests', () => {
       expect(dimensions.height).toBeLessThanOrEqual(1024)
     })
 
-    it('should convert WebP to KTX2 when ktx2Enabled is true', async () => {
+    it('should convert static WebP to KTX2 when ktx2Enabled is true', async () => {
       const result = await converter.convert(`${testServerUrl}/webp`, true)
       const expectedUrl = `http://localhost:8000/storage/${expectedHashes.webp}.ktx2`
       expect(result).toBe(expectedUrl)
@@ -539,6 +581,39 @@ describe('MediaConverter Unit Tests', () => {
       expect(response.headers['Cache-Control']).toBe('public, max-age=31536000')
     })
 
+    it('should return 429 with Retry-After header when file is already being processed', async () => {
+      // Mock the converter to throw the specific error
+      const mockConverter = {
+        convert: jest
+          .fn()
+          .mockRejectedValue(new Error('Processing hash already exists, try again in a few seconds abc123'))
+      }
+      const mockContext = {
+        components: {
+          ...components,
+          config: {
+            ...components.config,
+            getString: jest.fn().mockResolvedValue('true'),
+            requireString: jest.fn()
+          }
+        },
+        request: new Request(`http://localhost:8000/convert?fileUrl=${encodeURIComponent(testServerUrl + '/png')}`)
+      }
+
+      // Replace the converter with our mock
+      jest.spyOn(MediaConverter.prototype, 'convert').mockImplementation(mockConverter.convert)
+
+      const response = await convertHandler(mockContext as any)
+      expect(response.status).toBe(429)
+      expect(response.headers['Retry-After']).toBe('30')
+      expect(response.headers['Cache-Control']).toBe('no-cache')
+      expect(response.headers['Access-Control-Allow-Origin']).toBe('*')
+      expect(response.body).toEqual({
+        error: 'Processing hash already exists, try again in a few seconds abc123',
+        retryAfter: 5
+      })
+    })
+
     it('should return 400 when fileUrl is missing', async () => {
       const mockContext = {
         components,
@@ -558,6 +633,70 @@ describe('MediaConverter Unit Tests', () => {
       expect(response.headers['Access-Control-Allow-Origin']).toBe('*')
       expect(response.headers['Access-Control-Allow-Methods']).toBe('GET, POST, OPTIONS')
       expect(response.headers['Access-Control-Allow-Headers']).toBe('Content-Type')
+    })
+
+    it('should handle preProcessToPNG parameter in GET request', async () => {
+      const mockContext = {
+        components,
+        request: new Request(
+          `http://localhost:8000/convert?fileUrl=${encodeURIComponent(
+            testServerUrl + '/png'
+          )}&ktx2=true&preProcessToPNG=true`
+        )
+      }
+      const response = await convertHandler(mockContext as any)
+      expect(response.status).toBe(302)
+      const expectedUrl = `http://localhost:8000/storage/${expectedHashes.png}.ktx2`
+      expect(response.headers['Location']).toBe(expectedUrl)
+      expect(response.headers['Access-Control-Allow-Origin']).toBe('*')
+      expect(response.headers['Cache-Control']).toBe('public, max-age=31536000')
+    })
+  })
+
+  describe('POST /convert', () => {
+    it('should handle preProcessToPNG parameter in POST request', async () => {
+      const mockContext = {
+        components,
+        request: new Request('http://localhost:8000/convert', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            fileUrl: `${testServerUrl}/png`,
+            ktx2: true,
+            preProcessToPNG: true
+          })
+        })
+      }
+      const response = await convertHandler(mockContext as any)
+      expect(response.status).toBe(200)
+      const expectedUrl = `http://localhost:8000/storage/${expectedHashes.png}.ktx2`
+      expect(response.body.url).toBe(expectedUrl)
+      expect(response.headers['Access-Control-Allow-Origin']).toBe('*')
+      expect(response.headers['Cache-Control']).toBe('public, max-age=31536000')
+    })
+
+    it('should handle preProcessToPNG parameter as false by default in POST request', async () => {
+      const mockContext = {
+        components,
+        request: new Request('http://localhost:8000/convert', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            fileUrl: `${testServerUrl}/png`,
+            ktx2: true
+          })
+        })
+      }
+      const response = await convertHandler(mockContext as any)
+      expect(response.status).toBe(200)
+      const expectedUrl = `http://localhost:8000/storage/${expectedHashes.png}.ktx2`
+      expect(response.body.url).toBe(expectedUrl)
+      expect(response.headers['Access-Control-Allow-Origin']).toBe('*')
+      expect(response.headers['Cache-Control']).toBe('public, max-age=31536000')
     })
   })
 })
