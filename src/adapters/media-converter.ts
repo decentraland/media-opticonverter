@@ -404,7 +404,7 @@ export class MediaConverter {
       const cleanUrl = fileUrl.split('?')[0]
       let ext = path.extname(cleanUrl)
       const shortHash = this.generateShortHash(cleanUrl)
-      
+
       this.logger.info('Starting convert', {
         fileUrl,
         ktx2Enabled: ktx2Enabled.toString(),
