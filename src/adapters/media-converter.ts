@@ -11,6 +11,15 @@ import { AppComponents } from '../types'
 const execAsync = promisify(exec)
 
 export class MediaConverter {
+  private static instance: MediaConverter | null = null
+  private static instanceParams: {
+    bucket: string
+    cloudfrontDomain: string
+    region: string
+    components: AppComponents
+    useLocalStorage: boolean
+  } | null = null
+
   private s3Client: S3Client | null
   private bucket: string
   private cloudfrontDomain: string
@@ -20,7 +29,7 @@ export class MediaConverter {
   private localStoragePath: string
   private processingHash: string = ''
 
-  constructor(
+  private constructor(
     bucket: string,
     cloudfrontDomain: string,
     region: string,
@@ -49,6 +58,23 @@ export class MediaConverter {
     if (useLocalStorage && !fs.existsSync(this.localStoragePath)) {
       fs.mkdirSync(this.localStoragePath, { recursive: true })
     }
+  }
+
+  public static getInstance(
+    bucket: string,
+    cloudfrontDomain: string,
+    region: string,
+    components: AppComponents,
+    useLocalStorage: boolean = false
+  ): MediaConverter {
+    if (!MediaConverter.instance) {
+      MediaConverter.instance = new MediaConverter(bucket, cloudfrontDomain, region, components, useLocalStorage)
+    }
+    return MediaConverter.instance
+  }
+
+  private setProcessingHash(hash: string) {
+    this.processingHash = hash
   }
 
   private generateShortHash(str: string): string {
@@ -406,12 +432,6 @@ export class MediaConverter {
       let ext = path.extname(cleanUrl)
       const shortHash = this.generateShortHash(cleanUrl)
 
-      if (this.processingHash === shortHash) {
-        throw new Error(`Processing hash already exists, try again in a few seconds ${shortHash}`)
-      }
-      // save processing hash
-      this.processingHash = shortHash
-
       this.logger.info('Starting convert', {
         fileUrl,
         ktx2Enabled: ktx2Enabled.toString(),
@@ -426,6 +446,13 @@ export class MediaConverter {
         this.logger.info('File found, returning it', { storageKey })
         return this.getFileUrl(storageKey)
       }
+
+      if (this.processingHash === shortHash) {
+        throw new Error(`Processing hash already exists, try again in a few seconds ${shortHash}`)
+      }
+      // save processing hash
+      this.setProcessingHash(shortHash)
+
       this.logger.info('File not found, processing it', { shortHash })
 
       // Download input file
@@ -569,6 +596,8 @@ export class MediaConverter {
       throw error
     } finally {
       // Clean up files
+      this.setProcessingHash('')
+
       try {
         if (outputPath && fs.existsSync(outputPath)) {
           fs.unlinkSync(outputPath)

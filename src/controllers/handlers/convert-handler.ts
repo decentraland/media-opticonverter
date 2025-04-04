@@ -49,7 +49,7 @@ export async function convertHandler(
       region = await components.config.requireString('AWS_REGION')
     }
 
-    const converter = new MediaConverter(bucket, cloudfrontDomain, region, components, useLocalStorage)
+    const converter = MediaConverter.getInstance(bucket, cloudfrontDomain, region, components, useLocalStorage)
     const result = await converter.convert(fileUrl, ktx2, preProcessToPNG)
 
     if (request.method === 'GET') {
@@ -72,6 +72,21 @@ export async function convertHandler(
       body: { url: result }
     }
   } catch (error) {
+    console.error('Error processing request:', error)
+    if (error instanceof Error && error.message.includes('Processing hash already exists')) {
+      return {
+        status: 429,
+        headers: {
+          ...corsHeaders,
+          'Retry-After': '30', // 5 seconds
+          'Cache-Control': 'no-cache'
+        },
+        body: {
+          error: error.message,
+          retryAfter: 5
+        }
+      }
+    }
     return {
       status: 500,
       headers: corsHeaders,

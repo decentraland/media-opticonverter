@@ -101,8 +101,8 @@ describe('MediaConverter Unit Tests', () => {
     // Set USE_LOCAL_STORAGE to true for tests
     process.env.USE_LOCAL_STORAGE = 'true'
 
-    // Initialize converter with test values
-    converter = new MediaConverter('test-bucket', 'test-domain', 'us-east-1', components, true)
+    // Initialize converter with test values using getInstance
+    converter = MediaConverter.getInstance('test-bucket', 'test-domain', 'us-east-1', components, true)
 
     // Set up test files
     testFiles = {
@@ -195,6 +195,10 @@ describe('MediaConverter Unit Tests', () => {
     await new Promise<void>((resolve) => {
       testServer.close(() => resolve())
     })
+  })
+
+  afterEach(() => {
+    jest.restoreAllMocks()
   })
 
   describe('SVG files', () => {
@@ -575,6 +579,39 @@ describe('MediaConverter Unit Tests', () => {
       expect(response.headers['Location']).toBe(expectedUrl)
       expect(response.headers['Access-Control-Allow-Origin']).toBe('*')
       expect(response.headers['Cache-Control']).toBe('public, max-age=31536000')
+    })
+
+    it('should return 429 with Retry-After header when file is already being processed', async () => {
+      // Mock the converter to throw the specific error
+      const mockConverter = {
+        convert: jest
+          .fn()
+          .mockRejectedValue(new Error('Processing hash already exists, try again in a few seconds abc123'))
+      }
+      const mockContext = {
+        components: {
+          ...components,
+          config: {
+            ...components.config,
+            getString: jest.fn().mockResolvedValue('true'),
+            requireString: jest.fn()
+          }
+        },
+        request: new Request(`http://localhost:8000/convert?fileUrl=${encodeURIComponent(testServerUrl + '/png')}`)
+      }
+
+      // Replace the converter with our mock
+      jest.spyOn(MediaConverter.prototype, 'convert').mockImplementation(mockConverter.convert)
+
+      const response = await convertHandler(mockContext as any)
+      expect(response.status).toBe(429)
+      expect(response.headers['Retry-After']).toBe('30')
+      expect(response.headers['Cache-Control']).toBe('no-cache')
+      expect(response.headers['Access-Control-Allow-Origin']).toBe('*')
+      expect(response.body).toEqual({
+        error: 'Processing hash already exists, try again in a few seconds abc123',
+        retryAfter: 5
+      })
     })
 
     it('should return 400 when fileUrl is missing', async () => {

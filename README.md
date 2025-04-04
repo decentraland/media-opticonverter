@@ -68,6 +68,10 @@ docker run -p 8000:8000 media-opticonverter
 
 ## Testing
 
+### Set up 
+
+It is required to install `git lfs`.
+
 ### Local Tests
 
 Run tests locally:

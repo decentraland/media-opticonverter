@@ -8,6 +8,7 @@ import { metricDeclarations } from '../../src/metrics'
 import * as path from 'path'
 import * as fs from 'fs'
 import * as http from 'http'
+import { createLogsMockComponent } from '../mocks/logs-mock'
 
 // Increase global timeout to 180 seconds
 jest.setTimeout(60000 * 3)
@@ -21,7 +22,7 @@ describe('MediaConverter Unit Tests', () => {
   beforeAll(async () => {
     const config = await createDotEnvConfigComponent({ path: ['.env.default', '.env'] })
     const metrics = await createMetricsComponent(metricDeclarations, { config })
-    const logs = await createLogComponent({ metrics })
+    const logs = createLogsMockComponent()
     const fetch = createFetchComponent()
 
     components = {
@@ -36,8 +37,8 @@ describe('MediaConverter Unit Tests', () => {
     // Set USE_LOCAL_STORAGE to true for tests
     process.env.USE_LOCAL_STORAGE = 'true'
 
-    // Initialize converter with test values
-    converter = new MediaConverter('test-bucket', 'test-domain', 'us-east-1', components, true)
+    // Initialize converter with test values using getInstance
+    converter = MediaConverter.getInstance('test-bucket', 'test-domain', 'us-east-1', components, true)
 
     // Create a temporary HTTP server to serve the test files
     testServer = http.createServer((req, res) => {
@@ -96,10 +97,10 @@ describe('MediaConverter Unit Tests', () => {
     { ext: 'jpg', label: 'JPG' }
   ]
 
-  resolutions.forEach((res) => {
-    groups.forEach((group) => {
+  for (const res of resolutions) {
+    for (const group of groups) {
       describe(`Group ${group}`, () => {
-        formats.forEach(({ ext, label }) => {
+        for (const { ext, label } of formats) {
           describe(`${res} ${label}`, () => {
             it(`${label} -> KTX2`, async () => {
               const url = `${testServerUrl}/measure/${group}/${res}.${ext}`
@@ -121,8 +122,8 @@ describe('MediaConverter Unit Tests', () => {
               )
             })
           })
-        })
+        }
       })
-    })
-  })
+    }
+  }
 })
