@@ -18,6 +18,7 @@ export class MediaConverter {
   private logger
   private useLocalStorage: boolean
   private localStoragePath: string
+  private processingHash: string = ''
 
   constructor(
     bucket: string,
@@ -404,6 +405,12 @@ export class MediaConverter {
       const cleanUrl = fileUrl.split('?')[0]
       let ext = path.extname(cleanUrl)
       const shortHash = this.generateShortHash(cleanUrl)
+
+      if (this.processingHash === shortHash) {
+        throw new Error(`Processing hash already exists, try again in a few seconds ${shortHash}`)
+      }
+      // save processing hash
+      this.processingHash = shortHash
 
       this.logger.info('Starting convert', {
         fileUrl,
