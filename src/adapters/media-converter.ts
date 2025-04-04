@@ -455,17 +455,17 @@ export class MediaConverter {
               effort: 10
             })
             .toFile(outputPath)
-          } else if ((ext === '.jpg' || ext === '.jpeg') && !ktx2Enabled) {
-              await sharpInstance
-                .jpeg({
-                  mozjpeg: true, // Use mozjpeg optimization
-                  quality: 80, // Lower quality for JPG/JPEG
-                  progressive: true, // Progressive loading
-                  optimizeCoding: true, // Optimize Huffman coding tables
-                  quantisationTable: 0, // Use default quantization table
-                  force: false // Force JPEG output even if input is JPEG
-                })
-                .toFile(outputPath)
+        } else if ((ext === '.jpg' || ext === '.jpeg') && !ktx2Enabled) {
+          await sharpInstance
+            .jpeg({
+              mozjpeg: true, // Use mozjpeg optimization
+              quality: 80, // Lower quality for JPG/JPEG
+              progressive: true, // Progressive loading
+              optimizeCoding: true, // Optimize Huffman coding tables
+              quantisationTable: 0, // Use default quantization table
+              force: false // Force JPEG output even if input is JPEG
+            })
+            .toFile(outputPath)
         } else if (!ktx2Enabled || preProcessToPNG) {
           // Default for other formats
           await sharpInstance
