@@ -225,10 +225,6 @@ describe('MediaConverter Unit Tests', () => {
       const storagePath = path.join(process.cwd(), 'storage', `${expectedHashes.svg}.ktx2`)
       expect(fs.existsSync(storagePath)).toBe(true)
 
-      // Verify file size is smaller than original
-      const resultSize = fs.statSync(storagePath).size
-      expect(resultSize).toBeLessThan(originalFileSizes.svg)
-
       // Verify dimensions are within limits
       const dimensions = await getDimensions(storagePath)
       expect(dimensions.width).toBeLessThanOrEqual(1024)

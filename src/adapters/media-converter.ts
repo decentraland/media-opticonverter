@@ -454,19 +454,18 @@ export class MediaConverter {
               colors: 128, // Reduced palette for SVG
               effort: 10
             })
-            .withIccProfile('none')
             .toFile(outputPath)
-        } else if ((ext === '.jpg' || ext === '.jpeg') && !ktx2Enabled) {
-          await sharpInstance
-            .jpeg({
-              mozjpeg: true, // Use mozjpeg optimization
-              quality: 80, // Lower quality for JPG/JPEG
-              progressive: true, // Progressive loading
-              optimizeCoding: true, // Optimize Huffman coding tables
-              quantisationTable: 0, // Use default quantization table
-              force: false // Force JPEG output even if input is JPEG
-            })
-            .toFile(outputPath)
+          } else if ((ext === '.jpg' || ext === '.jpeg') && !ktx2Enabled) {
+              await sharpInstance
+                .jpeg({
+                  mozjpeg: true, // Use mozjpeg optimization
+                  quality: 80, // Lower quality for JPG/JPEG
+                  progressive: true, // Progressive loading
+                  optimizeCoding: true, // Optimize Huffman coding tables
+                  quantisationTable: 0, // Use default quantization table
+                  force: false // Force JPEG output even if input is JPEG
+                })
+                .toFile(outputPath)
         } else if (!ktx2Enabled || preProcessToPNG) {
           // Default for other formats
           await sharpInstance
@@ -478,35 +477,15 @@ export class MediaConverter {
               effort: 10
             })
             .toFile(outputPath)
+        } else {
+          await sharpInstance.toFile(outputPath)
         }
 
         if (ktx2Enabled) {
-          // Get image dimensions and calculate resize only for PNG, JPG and JPEG
-          let resizeParams = ''
-          if (['.png', '.jpg', '.jpeg'].includes(ext.toLowerCase()) && !preProcessToPNG) {
-            // use input file and remove ICC profile
-            await sharp(tempInputPath).withIccProfile('none').toFile(outputPath)
-            const metadata = await sharp(outputPath).metadata()
-            const { width, height } = metadata
-            let resizeWidth = width
-            let resizeHeight = height
-
-            if (width && height) {
-              if (width > height) {
-                resizeWidth = 1024
-                resizeHeight = Math.round((height * 1024) / width)
-              } else {
-                resizeHeight = 1024
-                resizeWidth = Math.round((width * 1024) / height)
-              }
-              resizeParams = `--resize ${resizeWidth}x${resizeHeight}`
-            }
-          }
-
           // First convert to KTX2 with toktx
           const ktx2TempPath = path.join(os.tmpdir(), `temp_ktx2_${shortHash}.ktx2`)
 
-          const toktxCommand = `toktx --bcmp --t2 --genmipmap  --assign_oetf srgb ${resizeParams} "${ktx2TempPath}" "${outputPath}"`
+          const toktxCommand = `toktx --t2 --uastc --genmipmap --assign_oetf srgb "${ktx2TempPath}" "${outputPath}"`
 
           this.logger.info('Executing toktx command:', { command: toktxCommand })
           const { stdout: _, stderr: toktxError } = await execAsync(toktxCommand)
