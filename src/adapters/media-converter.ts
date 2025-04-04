@@ -400,15 +400,18 @@ export class MediaConverter {
     let outputPath = ''
 
     try {
-      this.logger.info('Starting convert', {
-        fileUrl,
-        ktx2Enabled: ktx2Enabled.toString(),
-        preProcessToPNG: preProcessToPNG.toString()
-      })
       // Clean URL by removing query parameters
       const cleanUrl = fileUrl.split('?')[0]
       let ext = path.extname(cleanUrl)
       const shortHash = this.generateShortHash(cleanUrl)
+      
+      this.logger.info('Starting convert', {
+        fileUrl,
+        ktx2Enabled: ktx2Enabled.toString(),
+        preProcessToPNG: preProcessToPNG.toString(),
+        shortHash,
+        ext
+      })
 
       // Check if file exists in storage
       let storageKey = await this.fileExists(shortHash)
