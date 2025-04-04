@@ -511,10 +511,11 @@ export class MediaConverter {
           // First convert to KTX2 with toktx
           const ktx2TempPath = path.join(os.tmpdir(), `temp_ktx2_${shortHash}.ktx2`)
 
-          const toktxCommand = `toktx --t2 --uastc 4 --zcmp 22 --target_type RGBA --lower_left_maps_to_s0t0 --assign_oetf srgb --genmipmap "${ktx2TempPath}" "${outputPath}"`
+          const toktxCommand = `toktx --t2 --uastc --genmipmap --zcmp 3 --lower_left_maps_to_s0t0 --assign_oetf srgb "${ktx2TempPath}" "${outputPath}"`
 
           this.logger.info('Executing toktx command:', { command: toktxCommand })
-          const { stdout: _, stderr: toktxError } = await execAsync(toktxCommand)
+          const { stdout: toktxStdout, stderr: toktxError } = await execAsync(toktxCommand)
+          this.logger.info(`'Executing toktx command stdout: ${toktxStdout}`)
           if (toktxError) this.logger.info('Toktx conversion stderr:', { error: toktxError })
 
           if (!fs.existsSync(ktx2TempPath)) {
@@ -523,7 +524,7 @@ export class MediaConverter {
 
           const size = fs.statSync(ktx2TempPath).size
           if (size < 100) {
-            throw new Error(`File exists but is too small to be a valid .ktx2 (${size} bytes)`)
+            throw new Error(`File ${ktx2TempPath} exists but is too small to be a valid .ktx2 (${size} bytes)`)
           }
 
           // remove this line if then apply optimizations

@@ -183,13 +183,13 @@ describe('MediaConverter Unit Tests', () => {
 
   afterAll(async () => {
     // Clean up storage directory after tests
-    // const storagePath = path.join(process.cwd(), 'storage')
-    // if (fs.existsSync(storagePath)) {
-    //   const files = fs.readdirSync(storagePath)
-    //   for (const file of files) {
-    //     fs.unlinkSync(path.join(storagePath, file))
-    //   }
-    // }
+    const storagePath = path.join(process.cwd(), 'storage')
+    if (fs.existsSync(storagePath)) {
+      const files = fs.readdirSync(storagePath)
+      for (const file of files) {
+        fs.unlinkSync(path.join(storagePath, file))
+      }
+    }
 
     // Stop the test server
     await new Promise<void>((resolve) => {
@@ -272,7 +272,7 @@ describe('MediaConverter Unit Tests', () => {
       expect(dimensions.height).toBeLessThanOrEqual(1024)
     })
 
-    it.skip('should convert PNG to KTX2 with preProcessToPNG', async () => {
+    it('should convert PNG to KTX2 with preProcessToPNG', async () => {
       const result = await converter.convert(`${testServerUrl}/png`, true, true)
       const expectedUrl = `http://localhost:8000/storage/${expectedHashes.png}.ktx2`
       expect(result).toBe(expectedUrl)
@@ -327,7 +327,7 @@ describe('MediaConverter Unit Tests', () => {
       expect(dimensions.height).toBeLessThanOrEqual(1024)
     })
 
-    it.skip('should convert JPG to KTX2 with preProcessToPNG', async () => {
+    it('should convert JPG to KTX2 with preProcessToPNG', async () => {
       const result = await converter.convert(`${testServerUrl}/jpg`, true, true)
       const expectedUrl = `http://localhost:8000/storage/${expectedHashes.jpg}.ktx2`
       expect(result).toBe(expectedUrl)
@@ -378,7 +378,7 @@ describe('MediaConverter Unit Tests', () => {
       expect(dimensions.height).toBeLessThanOrEqual(1024)
     })
 
-    it.skip('should convert JPEG to KTX2 with preProcessToPNG', async () => {
+    it('should convert JPEG to KTX2 with preProcessToPNG', async () => {
       const result = await converter.convert(`${testServerUrl}/jpeg`, true, true)
       const expectedUrl = `http://localhost:8000/storage/${expectedHashes.jpeg}.ktx2`
       expect(result).toBe(expectedUrl)
@@ -553,13 +553,13 @@ describe('MediaConverter Unit Tests', () => {
       expect(result).toContain('/storage/')
 
       // Clean up
-      // const storagePath = path.join(process.cwd(), 'storage')
-      // if (fs.existsSync(storagePath)) {
-      //   const files = fs.readdirSync(storagePath)
-      //   for (const file of files) {
-      //     fs.unlinkSync(path.join(storagePath, file))
-      //   }
-      // }
+      const storagePath = path.join(process.cwd(), 'storage')
+      if (fs.existsSync(storagePath)) {
+        const files = fs.readdirSync(storagePath)
+        for (const file of files) {
+          fs.unlinkSync(path.join(storagePath, file))
+        }
+      }
     })
   })
 
