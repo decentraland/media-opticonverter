@@ -55,6 +55,7 @@ export class MediaConverter {
   }
 
   private async fileExists(key: string): Promise<string | null> {
+    this.logger.info('Checking if file exists', { key })
     if (this.useLocalStorage) {
       const filePath = path.join(this.localStoragePath, key)
       return fs.existsSync(filePath) ? key : null
@@ -81,6 +82,8 @@ export class MediaConverter {
   }
 
   private async uploadFile(key: string, filePath: string, contentType: string): Promise<boolean> {
+    this.logger.info('Uploading File', { filePath, contentType })
+
     if (this.useLocalStorage) {
       const targetPath = path.join(this.localStoragePath, key)
       if (fs.existsSync(targetPath)) {
@@ -128,6 +131,7 @@ export class MediaConverter {
   }
 
   private async detectFileType(filePath: string): Promise<string> {
+    this.logger.info('Detecting file ext', { filePath })
     try {
       const buffer = fs.readFileSync(filePath, { encoding: null })
       const header = buffer.slice(0, 12)
@@ -396,6 +400,11 @@ export class MediaConverter {
     let outputPath = ''
 
     try {
+      this.logger.info('Starting convert', {
+        fileUrl,
+        ktx2Enabled: ktx2Enabled.toString(),
+        preProcessToPNG: preProcessToPNG.toString()
+      })
       // Clean URL by removing query parameters
       const cleanUrl = fileUrl.split('?')[0]
       let ext = path.extname(cleanUrl)
@@ -404,12 +413,15 @@ export class MediaConverter {
       // Check if file exists in storage
       let storageKey = await this.fileExists(shortHash)
       if (storageKey) {
+        this.logger.info('File found, returning it', { storageKey })
         return this.getFileUrl(storageKey)
       }
+      this.logger.info('File not found, processing it')
 
       // Download input file
       tempInputPath = path.join(os.tmpdir(), `input_${Date.now()}`)
       try {
+        this.logger.info('Downloading file', { fileUrl })
         const response = await this.components.fetch.fetch(fileUrl)
         if (!response.ok) {
           throw new Error(`Failed to download file: ${response.statusText}`)
@@ -430,6 +442,7 @@ export class MediaConverter {
       if (!ext) {
         ext = await this.detectFileType(tempInputPath)
       }
+      this.logger.info('File ext detected', { ext })
 
       const config = await this.getConversionConfig(ext, tempInputPath, ktx2Enabled)
 
@@ -438,6 +451,8 @@ export class MediaConverter {
 
       // Convert file
       if (config.convertCommand[0] === 'sharp') {
+        this.logger.info('Processing sharp convert command')
+
         const sharpInstance = sharp(tempInputPath).resize(1024, 1024, {
           fit: 'inside',
           withoutEnlargement: true
@@ -445,6 +460,8 @@ export class MediaConverter {
 
         // Optimize based on input format
         if (ext === '.svg' || ext === '.webp') {
+          this.logger.info('Sharp command for ext', { ext })
+
           // SVG: Use smaller palette and more aggressive compression
           await sharpInstance
             .png({
@@ -456,6 +473,7 @@ export class MediaConverter {
             })
             .toFile(outputPath)
         } else if ((ext === '.jpg' || ext === '.jpeg') && !ktx2Enabled) {
+          this.logger.info('Sharp command when ktk2 is not enabled and ext', { ext })
           await sharpInstance
             .jpeg({
               mozjpeg: true, // Use mozjpeg optimization
@@ -467,6 +485,7 @@ export class MediaConverter {
             })
             .toFile(outputPath)
         } else if (!ktx2Enabled || preProcessToPNG) {
+          this.logger.info('Sharp command when ktk2 is not enabled or pre process to png is enable', { ext })
           // Default for other formats
           await sharpInstance
             .png({
@@ -478,6 +497,7 @@ export class MediaConverter {
             })
             .toFile(outputPath)
         } else {
+          this.logger.info('Sharp command to just resize the file to the supported limits', { ext })
           await sharpInstance.toFile(outputPath)
         }
 
@@ -485,7 +505,7 @@ export class MediaConverter {
           // First convert to KTX2 with toktx
           const ktx2TempPath = path.join(os.tmpdir(), `temp_ktx2_${shortHash}.ktx2`)
 
-          const toktxCommand = `toktx --t2 --uastc --genmipmap --assign_oetf srgb "${ktx2TempPath}" "${outputPath}"`
+          const toktxCommand = `toktx --t2 --uastc --genmipmap --zcmp 3 --assign_oetf srgb "${ktx2TempPath}" "${outputPath}"`
 
           this.logger.info('Executing toktx command:', { command: toktxCommand })
           const { stdout: _, stderr: toktxError } = await execAsync(toktxCommand)
@@ -504,6 +524,8 @@ export class MediaConverter {
           outputPath = ktx2TempPath
         }
       } else if (config.convertCommand[0] === 'ffmpeg') {
+        this.logger.info('Executing ffmpeg command', { ext })
+
         // ffmpeg c
         const convertCommand = config.convertCommand
           .map((cmd) => cmd.replace('${input}', tempInputPath).replace('${output}', outputPath))
@@ -522,6 +544,8 @@ export class MediaConverter {
       // Upload to storage and check if file already existed
       const fileAlreadyExists = await this.uploadFile(storageKey, outputPath, config.mimetype)
       if (fileAlreadyExists) {
+        this.logger.info('File uploaded successfully')
+
         return this.getFileUrl(storageKey)
       }
 
