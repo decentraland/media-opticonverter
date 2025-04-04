@@ -72,7 +72,6 @@ export async function convertHandler(
       body: { url: result }
     }
   } catch (error) {
-    console.error('Error processing request:', error)
     return {
       status: 500,
       headers: corsHeaders,

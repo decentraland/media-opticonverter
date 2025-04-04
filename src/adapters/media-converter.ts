@@ -416,12 +416,12 @@ export class MediaConverter {
         this.logger.info('File found, returning it', { storageKey })
         return this.getFileUrl(storageKey)
       }
-      this.logger.info('File not found, processing it')
+      this.logger.info('File not found, processing it', { shortHash })
 
       // Download input file
       tempInputPath = path.join(os.tmpdir(), `input_${Date.now()}`)
       try {
-        this.logger.info('Downloading file', { fileUrl })
+        this.logger.info('Downloading file', { fileUrl, shortHash })
         const response = await this.components.fetch.fetch(fileUrl)
         if (!response.ok) {
           throw new Error(`Failed to download file: ${response.statusText}`)
@@ -442,7 +442,7 @@ export class MediaConverter {
       if (!ext) {
         ext = await this.detectFileType(tempInputPath)
       }
-      this.logger.info('File ext detected', { ext })
+      this.logger.info('File ext detected', { ext, shortHash })
 
       const config = await this.getConversionConfig(ext, tempInputPath, ktx2Enabled)
 
@@ -451,7 +451,7 @@ export class MediaConverter {
 
       // Convert file
       if (config.convertCommand[0] === 'sharp') {
-        this.logger.info('Processing sharp convert command')
+        this.logger.info('Processing sharp convert command', { ext, storageKey })
 
         const sharpInstance = sharp(tempInputPath).resize(1024, 1024, {
           fit: 'inside',
@@ -473,7 +473,7 @@ export class MediaConverter {
             })
             .toFile(outputPath)
         } else if ((ext === '.jpg' || ext === '.jpeg') && !ktx2Enabled) {
-          this.logger.info('Sharp command when ktk2 is not enabled and ext', { ext })
+          this.logger.info('Sharp command when ktk2 is not enabled and ext', { ext, storageKey })
           await sharpInstance
             .jpeg({
               mozjpeg: true, // Use mozjpeg optimization
@@ -485,7 +485,10 @@ export class MediaConverter {
             })
             .toFile(outputPath)
         } else if (!ktx2Enabled || preProcessToPNG) {
-          this.logger.info('Sharp command when ktk2 is not enabled or pre process to png is enable', { ext })
+          this.logger.info('Sharp command when ktk2 is not enabled or pre process to png is enable', {
+            ext,
+            storageKey
+          })
           // Default for other formats
           await sharpInstance
             .png({
@@ -497,7 +500,7 @@ export class MediaConverter {
             })
             .toFile(outputPath)
         } else {
-          this.logger.info('Sharp command to just resize the file to the supported limits', { ext })
+          this.logger.info('Sharp command to just resize the file to the supported limits', { ext, storageKey })
           await sharpInstance.toFile(outputPath)
         }
 
@@ -505,7 +508,7 @@ export class MediaConverter {
           // First convert to KTX2 with toktx
           const ktx2TempPath = path.join(os.tmpdir(), `temp_ktx2_${shortHash}.ktx2`)
 
-          const toktxCommand = `toktx --t2 --uastc --genmipmap --zcmp 3 --assign_oetf srgb "${ktx2TempPath}" "${outputPath}"`
+          const toktxCommand = `toktx --t2 --uastc 4 --zcmp 22 --target_type RGBA --lower_left_maps_to_s0t0 --assign_oetf srgb --genmipmap "${ktx2TempPath}" "${outputPath}"`
 
           this.logger.info('Executing toktx command:', { command: toktxCommand })
           const { stdout: _, stderr: toktxError } = await execAsync(toktxCommand)
@@ -524,7 +527,7 @@ export class MediaConverter {
           outputPath = ktx2TempPath
         }
       } else if (config.convertCommand[0] === 'ffmpeg') {
-        this.logger.info('Executing ffmpeg command', { ext })
+        this.logger.info('Executing ffmpeg command', { ext, storageKey })
 
         // ffmpeg c
         const convertCommand = config.convertCommand
@@ -544,7 +547,7 @@ export class MediaConverter {
       // Upload to storage and check if file already existed
       const fileAlreadyExists = await this.uploadFile(storageKey, outputPath, config.mimetype)
       if (fileAlreadyExists) {
-        this.logger.info('File uploaded successfully')
+        this.logger.info('File uploaded successfully', { storageKey })
 
         return this.getFileUrl(storageKey)
       }
