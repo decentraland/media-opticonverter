@@ -15,6 +15,7 @@ import * as ffmpeg from 'fluent-ffmpeg'
 import { exec } from 'child_process'
 import { promisify } from 'util'
 import * as os from 'os'
+import { createLogsMockComponent } from '../mocks/logs-mock'
 
 const execAsync = promisify(exec)
 
@@ -85,7 +86,8 @@ describe('MediaConverter Unit Tests', () => {
   beforeAll(async () => {
     const config = await createDotEnvConfigComponent({ path: ['.env.default', '.env'] })
     const metrics = await createMetricsComponent(metricDeclarations, { config })
-    const logs = await createLogComponent({ metrics })
+    const logs = createLogsMockComponent()
+
     const fetch = createFetchComponent()
 
     components = {
