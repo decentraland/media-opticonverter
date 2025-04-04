@@ -1,70 +1,8 @@
-name: build-app
+name: build
 
 on:
   push:
 
 jobs:
-  validations:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-       with:
-        lfs: true
-      - name: Use Node.js 18.x
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18.x
-          cache: yarn
-      - name: install
-        run: yarn install --frozen-lockfile
-      - name: lint
-        run: yarn lint:check
-
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Use Node.js 18.x
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18.x
-          cache: yarn
-      - name: install
-        run: yarn install --frozen-lockfile
-      - name: create .env
-        run: echo "" >> .env
-      - name: build
-        run: yarn build
-      - name: test
-        run: yarn test --coverage
-      - name: hide coveralls if repo is private
-        id: repo-visibility
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ github.repository }})
-
-          # Validate and parse JSON response
-          if echo "$RESPONSE" | jq -e . >/dev/null 2>&1; then
-              IS_PRIVATE=$(echo "$RESPONSE" | jq -r '.private')
-          else
-              echo "Error: API response is not valid JSON or malformed."
-              exit 1
-          fi
-
-          echo $IS_PRIVATE
-          # Set environment variable for coveralls
-          if [ "$IS_PRIVATE" = 'true' ]; then
-              echo "continue-coveralls=false" >> $GITHUB_OUTPUT
-          else
-              echo "continue-coveralls=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: report coverage
-        if: steps.repo-visibility.outputs.continue-coveralls == 'true'
-        uses: coverallsapp/github-action@master
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path-to-lcov: ./coverage/lcov.info
+  build:
+    uses: decentraland/platform-actions/.github/workflows/apps-build.yml@feat/use-lfs
