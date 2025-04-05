@@ -7,6 +7,7 @@
     "start:local:docker": "npm run start:docker",
     "start:local": "npm run build && USE_LOCAL_STORAGE=true node --trace-warnings --abort-on-uncaught-exception --unhandled-rejections=strict dist/index.js",
     "test:base": "jest --verbose --detectOpenHandles --coverage",
+    "test:base:no-measure": "jest --verbose --detectOpenHandles --coverage --testPathIgnorePatterns=\"media-converter-measure\"",
     "test": "./scripts/test.sh",
     "lint:check": "eslint '**/*.{js,ts}'",
     "lint:fix": "eslint '**/*.{js,ts}' --fix"
