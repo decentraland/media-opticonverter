@@ -7,6 +7,7 @@ A service that converts and optimizes media files (images and videos) for web us
 - Converts between multiple image formats (SVG, PNG, WebP, JPG, JPEG)
 - Converts animated GIFs to MP4
 - Converts images to KTX2 format for 3D/WebGL use
+- Optional PNG pre-processing for better KTX2 conversion compatibility
 - Optimizes file sizes while maintaining quality
 - Supports both S3 and local storage
 - Handles animated WebP files
@@ -17,7 +18,7 @@ A service that converts and optimizes media files (images and videos) for web us
 - SVG → PNG
 - PNG → PNG (optimized)
 - WebP → PNG
-- JPG/JPEG → PNG
+- JPG/JPEG → JPG/JPEG
 - Any image → KTX2 (when ktx2Enabled is true)
 
 ### Video Formats
@@ -70,11 +71,29 @@ docker run -p 8000:8000 media-opticonverter
 
 ### Set up 
 
-It is required to install `git lfs`.
+The test suite includes image assets that are stored using Git Large File Storage (LFS). You need to have Git LFS installed and configured to run the tests:
+
+1. Install Git LFS:
+   ```bash
+   # macOS (using Homebrew)
+   brew install git-lfs
+
+   # Ubuntu/Debian
+   sudo apt-get install git-lfs
+
+   # Windows (using Chocolatey)
+   choco install git-lfs
+   ```
+
+2. The test script will automatically:
+   - Initialize Git LFS in the repository
+   - Pull the LFS files needed for testing
+
+Note: When running tests in GitHub Actions, LFS files are handled automatically.
 
 ### Local Tests
 
-Run tests locally:
+Run all tests (including measurement tests):
 ```bash
 npm test
 ```
@@ -86,6 +105,8 @@ Run tests in Docker environment:
 npm run test:docker
 ```
 
+Note: The measurement tests are skipped when running in GitHub Actions to optimize CI/CD performance.
+
 ## API Endpoints
 
 ### GET /convert
@@ -94,6 +115,7 @@ Converts a media file to the appropriate format and returns a 302 redirect to th
 **Query Parameters:**
 - `fileUrl`: URL of the file to convert
 - `ktx2`: (optional) Set to 'true' to convert to KTX2 format
+- `preProcessToPNG`: (optional) Set to 'true' to convert the image to PNG before final conversion. This can help with compatibility issues when converting to KTX2. Default is 'false'.
 
 **Response:**
 - Status: 302 (Redirect)
@@ -128,7 +150,8 @@ Converts a media file to the appropriate format and returns the URL of the conve
 ```json
 {
   "fileUrl": "string",    // URL of the file to convert
-  "ktx2": boolean        // Optional: Enable KTX2 conversion (default: false)
+  "ktx2": boolean,       // Optional: Enable KTX2 conversion (default: false)
+  "preProcessToPNG": boolean  // Optional: Convert to PNG before final conversion (default: false)
 }
 ```
 
@@ -162,13 +185,17 @@ curl -X POST http://localhost:8000/convert \
     "fileUrl": "http://localhost:8000/test/assets/test.webp"
   }'
 
-# Convert an SVG to KTX2
+# Convert a JPG to KTX2 with PNG pre-processing
 curl -X POST http://localhost:8000/convert \
   -H "Content-Type: application/json" \
   -d '{
-    "fileUrl": "http://localhost:8000/test/assets/test.svg",
-    "ktx2": true
+    "fileUrl": "http://localhost:8000/test/assets/test.jpg",
+    "ktx2": true,
+    "preProcessToPNG": true
   }'
+
+# Convert a jpg to KTX2 with PNG pre-processing (via GET)
+curl "http://localhost:8000/convert?fileUrl=http://localhost:8000/test/assets/test.jpg&ktx2=true&preProcessToPNG=true"
 ```
 
 ### GET /ping
