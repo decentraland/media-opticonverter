@@ -1,5 +1,8 @@
 # Media OptiConverter
 
+[![Coverage Status](https://coveralls.io/repos/github/decentraland/media-opticonverter/badge.svg?branch=main)](https://coveralls.io/github/decentraland/media-opticonverter?branch=main)
+
+
 A service that converts and optimizes media files (images and videos) for web use. It supports various formats including SVG, PNG, WebP, JPG, JPEG, GIF, and KTX2.
 
 ## Features
