@@ -3,6 +3,7 @@ import { setupRouter } from '../../src/controllers/routes'
 import { createLogsMockComponent } from '../mocks/logs-mock'
 import { createTestMetricsComponent } from '@well-known-components/metrics'
 import { metricDeclarations } from '../../src/metrics'
+import { IBaseComponent } from '@well-known-components/interfaces'
 
 // Mock the router setup
 jest.mock('../../src/controllers/routes')
@@ -30,12 +31,29 @@ describe('Service Unit Tests', () => {
       server: {
         use: mockUse,
         setContext: mockSetContext
+      },
+      statusChecks: {
+        isReady: jest.fn().mockResolvedValue(true)
+      } as IBaseComponent,
+      config: {
+        getString: jest.fn(),
+        requireString: jest.fn(),
+        getNumber: jest.fn(),
+        requireNumber: jest.fn(),
+        getBoolean: jest.fn(),
+        requireBoolean: jest.fn()
+      },
+      fetch: {
+        fetch: jest.fn()
+      },
+      localFetch: {
+        fetch: jest.fn()
       }
     }
 
     // Act
     await main({
-      components: components as any,
+      components,
       startComponents: mockStartComponents,
       stop: jest.fn()
     })
