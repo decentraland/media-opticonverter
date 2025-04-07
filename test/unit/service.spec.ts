@@ -49,4 +49,4 @@ describe('Service Unit Tests', () => {
     expect(mockSetContext).toHaveBeenCalledWith({ components })
     expect(mockStartComponents).toHaveBeenCalled()
   })
-}) 
+})

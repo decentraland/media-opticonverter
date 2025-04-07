@@ -49,16 +49,16 @@ describe('Routes Unit Tests', () => {
     }
 
     await setupRouter(globalContext as any)
-    
+
     // Verify ping route
     expect(mockGet).toHaveBeenCalledWith('/ping', mockPingHandler)
-    
+
     // Verify GET convert route
     expect(mockGet).toHaveBeenCalledWith('/convert', mockConvertHandler)
-    
+
     // Verify POST convert route
     expect(mockPost).toHaveBeenCalledWith('/convert', mockConvertHandler)
-    
+
     // Storage route should not be added
     expect(mockGet).not.toHaveBeenCalledWith('/storage/:filename', mockStorageHandler)
   })
@@ -76,8 +76,8 @@ describe('Routes Unit Tests', () => {
     }
 
     await setupRouter(globalContext as any)
-    
+
     // Verify storage route is added when local storage is enabled
     expect(mockGet).toHaveBeenCalledWith('/storage/:filename', mockStorageHandler)
   })
-}) 
+})

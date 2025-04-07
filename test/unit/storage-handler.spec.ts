@@ -16,10 +16,10 @@ describe('Storage Handler Unit Tests', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    
+
     // Mock process.cwd() to return a predictable path
     jest.spyOn(process, 'cwd').mockReturnValue('/app')
-    
+
     // Mock path.join to use real implementation
     jest.spyOn(path, 'join').mockImplementation((...args) => {
       return args.join('/')
@@ -44,7 +44,7 @@ describe('Storage Handler Unit Tests', () => {
   it('should return file when it exists', async () => {
     // Mock fs.existsSync to return true
     jest.spyOn(fs, 'existsSync').mockReturnValue(true)
-    
+
     // Mock fs.statSync to return file stats
     const mockStat = {
       size: 12345
@@ -68,4 +68,4 @@ describe('Storage Handler Unit Tests', () => {
     expect(result.body).toBe(mockStream)
     expect(fs.createReadStream).toHaveBeenCalledWith('/app/storage/testfile.png')
   })
-}) 
+})

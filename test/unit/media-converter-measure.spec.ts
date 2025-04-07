@@ -1,7 +1,6 @@
 import { MediaConverter } from '../../src/adapters/media-converter'
 import { createDotEnvConfigComponent } from '@well-known-components/env-config-provider'
 import { createFetchComponent } from '@well-known-components/fetch-component'
-import { createLogComponent } from '@well-known-components/logger'
 import { createMetricsComponent } from '@well-known-components/metrics'
 import { AppComponents } from '../../src/types'
 import { metricDeclarations } from '../../src/metrics'

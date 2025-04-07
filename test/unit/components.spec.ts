@@ -1,6 +1,10 @@
 import { initComponents } from '../../src/components'
 import { createDotEnvConfigComponent } from '@well-known-components/env-config-provider'
-import { createServerComponent, createStatusCheckComponent, instrumentHttpServerWithPromClientRegistry } from '@well-known-components/http-server'
+import {
+  createServerComponent,
+  createStatusCheckComponent,
+  instrumentHttpServerWithPromClientRegistry
+} from '@well-known-components/http-server'
 import { createLogComponent } from '@well-known-components/logger'
 import { createMetricsComponent } from '@well-known-components/metrics'
 import { createFetchComponent } from '@well-known-components/fetch-component'
@@ -22,33 +26,33 @@ describe('Components Unit Tests', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    
+
     // Setup mocks
     const mockCreateDotEnvConfig = createDotEnvConfigComponent as jest.Mock
     mockCreateDotEnvConfig.mockResolvedValue(mockConfig)
-    
+
     const mockCreateMetrics = createMetricsComponent as jest.Mock
     mockCreateMetrics.mockResolvedValue(mockMetrics)
-    
+
     const mockCreateLog = createLogComponent as jest.Mock
     mockCreateLog.mockResolvedValue(mockLogs)
-    
+
     const mockCreateServer = createServerComponent as jest.Mock
     mockCreateServer.mockResolvedValue(mockServer)
-    
+
     const mockCreateStatusCheck = createStatusCheckComponent as jest.Mock
     mockCreateStatusCheck.mockResolvedValue(mockStatusChecks)
-    
+
     const mockCreateFetch = createFetchComponent as jest.Mock
     mockCreateFetch.mockReturnValue(mockFetch)
-    
+
     const mockInstrument = instrumentHttpServerWithPromClientRegistry as jest.Mock
     mockInstrument.mockResolvedValue(undefined)
   })
 
   it('should initialize all components correctly', async () => {
     const components = await initComponents()
-    
+
     // Verify all components are initialized
     expect(createDotEnvConfigComponent).toHaveBeenCalledWith({ path: ['.env.default', '.env'] })
     expect(createMetricsComponent).toHaveBeenCalled()
@@ -62,7 +66,7 @@ describe('Components Unit Tests', () => {
       config: mockConfig,
       registry: mockMetrics.registry
     })
-    
+
     // Verify returned components
     expect(components).toEqual({
       config: mockConfig,
@@ -73,4 +77,4 @@ describe('Components Unit Tests', () => {
       metrics: mockMetrics
     })
   })
-}) 
+})
