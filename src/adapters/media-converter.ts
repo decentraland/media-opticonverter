@@ -32,7 +32,7 @@ export class MediaConverter {
   private localStoragePath: string
   private processingHash: string = ''
   private limit: pLimit.Limit
-  private uploads: number = 0
+  private tasks: number = 0
 
   private constructor(
     bucket: string,
@@ -109,12 +109,19 @@ export class MediaConverter {
         })
 
         const listResult = await this.limit(() => {
-          this.uploads++
-          this.logger.info('Starting convert number up', { uploads: this.uploads })
-          return this.s3Client!.send(listCommand)
+          try {
+            this.tasks++
+            this.logger.info('Checking if file exists (tasks up)', { tasks: this.tasks })
+            return this.s3Client!.send(listCommand)
+          } catch (e) {
+            this.tasks--
+            this.logger.error('Error on executing limit action (task down)', { tasks: this.tasks })
+            this.logger.error('Error checking if file exists', { error: e instanceof Error ? e.message : String(e) })
+            throw e
+          }
         })
-        this.uploads--
-        this.logger.info('Starting convert number down', { uploads: this.uploads })
+        this.tasks--
+        this.logger.info('Checking if file exists (tasks down)', { tasks: this.tasks })
         if (listResult.Contents && listResult.Contents.length > 0) {
           return listResult.Contents[0].Key || null
         }
@@ -148,12 +155,19 @@ export class MediaConverter {
         })
 
         const listResult = await this.limit(() => {
-          this.uploads++
-          this.logger.info('Starting convert number up', { uploads: this.uploads })
-          return this.s3Client!.send(listCommand)
+          try {
+            this.tasks++
+            this.logger.info('Uploading file (tasks up)', { tasks: this.tasks })
+            return this.s3Client!.send(listCommand)
+          } catch (e) {
+            this.tasks--
+            this.logger.error('Error on executing limit action (task down)', { tasks: this.tasks })
+            this.logger.error('Error Uploading File', { error: e instanceof Error ? e.message : String(e) })
+            throw e
+          }
         })
-        this.uploads--
-        this.logger.info('Starting convert number down', { uploads: this.uploads })
+        this.tasks--
+        this.logger.info('Uploading file (tasks down)', { tasks: this.tasks })
         if (listResult.Contents && listResult.Contents.length > 0) {
           return true
         }
@@ -573,9 +587,20 @@ export class MediaConverter {
 
           const toktxCommand = `toktx --t2 --uastc --genmipmap --zcmp 3 --lower_left_maps_to_s0t0 --assign_oetf srgb "${ktx2TempPath}" "${outputPath}"`
 
-          this.logger.info('Executing toktx command:', { command: toktxCommand })
-          const { stdout: toktxStdout, stderr: toktxError } = await execAsync(toktxCommand)
-          this.logger.info(`'Executing toktx command stdout: ${toktxStdout}`)
+          const { stdout: toktxStdout, stderr: toktxError } = await this.limit(() => {
+            try {
+              this.tasks++
+              this.logger.info('Executing toktx command (tasks up):', { command: toktxCommand, tasks: this.tasks })
+              return execAsync(toktxCommand)
+            } catch (e) {
+              this.tasks--
+              this.logger.error('Error on executing limit action (task down)', { tasks: this.tasks })
+              this.logger.error('Error executing toktx command', { error: e instanceof Error ? e.message : String(e) })
+              throw e
+            }
+          })
+          this.tasks--
+          this.logger.info(`'Executing toktx command stdout (tasks down): ${toktxStdout}`)
           if (toktxError) this.logger.info('Toktx conversion stderr:', { error: toktxError })
 
           if (!fs.existsSync(ktx2TempPath)) {
@@ -598,8 +623,24 @@ export class MediaConverter {
           .map((cmd) => cmd.replace('${input}', tempInputPath).replace('${output}', outputPath))
           .join(' ')
 
-        const { stdout: _, stderr: convertError } = await execAsync(convertCommand)
-        if (convertError) this.logger.info('Conversion stderr:', { error: convertError })
+        const { stdout: _, stderr: convertError } = await this.limit(() => {
+          try {
+            this.tasks++
+            this.logger.info('Executing ffmpeg command (tasks up):', { ext, storageKey, tasks: this.tasks })
+            return execAsync(convertCommand)
+          } catch (e) {
+            this.tasks--
+            this.logger.error('Error on executing limit action (task down)', { tasks: this.tasks })
+            this.logger.error('Error executing ffmpeg command', {
+              error: e instanceof Error ? e.message : String(e),
+              ext,
+              storageKey
+            })
+            throw e
+          }
+        })
+        this.tasks--
+        this.logger.info('Conversion stderr (tasks down):', { error: convertError, tasks: this.tasks })
       } else {
         throw new Error(`Unsupported conversion command: ${config.convertCommand[0]}`)
       }
