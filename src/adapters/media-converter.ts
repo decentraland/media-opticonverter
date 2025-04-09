@@ -1,4 +1,5 @@
 import { S3Client, PutObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3'
+import { NodeHttpHandler } from '@aws-sdk/node-http-handler'
 import { exec } from 'child_process'
 import { promisify } from 'util'
 import * as fs from 'fs'
@@ -31,6 +32,7 @@ export class MediaConverter {
   private localStoragePath: string
   private processingHash: string = ''
   private limit: pLimit.Limit
+  private uploads: number = 0
 
   private constructor(
     bucket: string,
@@ -44,7 +46,7 @@ export class MediaConverter {
 
     const httpsAgent = new Agent({
       keepAlive: true,
-      keepAliveMsecs: 60000,
+      keepAliveMsecs: 10000,
       maxSockets: 10,
       maxFreeSockets: 5
     })
@@ -54,11 +56,11 @@ export class MediaConverter {
       : new S3Client({
           region,
           maxAttempts: 1,
-          requestHandler: {
-            connectionTimeout: 15000, // 15 seconds
-            socketTimeout: 1200000, // 120 seconds
-            httpsAgent
-          }
+          requestHandler: new NodeHttpHandler({
+            httpsAgent,
+            connectionTimeout: 15000,
+            socketTimeout: 60000
+          })
         })
     this.components = components
     this.logger = components.logs.getLogger('media-converter')
@@ -106,7 +108,13 @@ export class MediaConverter {
           MaxKeys: 1
         })
 
-        const listResult = await this.limit(() => this.s3Client!.send(listCommand))
+        const listResult = await this.limit(() => {
+          this.uploads++
+          this.logger.info('Starting convert number up', { uploads: this.uploads })
+          return this.s3Client!.send(listCommand)
+        })
+        this.uploads--
+        this.logger.info('Starting convert number down', { uploads: this.uploads })
         if (listResult.Contents && listResult.Contents.length > 0) {
           return listResult.Contents[0].Key || null
         }
@@ -139,7 +147,13 @@ export class MediaConverter {
           MaxKeys: 1
         })
 
-        const listResult = await this.limit(() => this.s3Client!.send(listCommand))
+        const listResult = await this.limit(() => {
+          this.uploads++
+          this.logger.info('Starting convert number up', { uploads: this.uploads })
+          return this.s3Client!.send(listCommand)
+        })
+        this.uploads--
+        this.logger.info('Starting convert number down', { uploads: this.uploads })
         if (listResult.Contents && listResult.Contents.length > 0) {
           return true
         }
