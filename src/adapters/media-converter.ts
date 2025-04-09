@@ -8,6 +8,7 @@ import * as crypto from 'crypto'
 import sharp from 'sharp'
 import { AppComponents } from '../types'
 import { Agent } from 'https'
+import pLimit from 'p-limit'
 
 const execAsync = promisify(exec)
 
@@ -29,6 +30,7 @@ export class MediaConverter {
   private useLocalStorage: boolean
   private localStoragePath: string
   private processingHash: string = ''
+  private limit: pLimit.Limit
 
   private constructor(
     bucket: string,
@@ -66,6 +68,8 @@ export class MediaConverter {
     if (useLocalStorage && !fs.existsSync(this.localStoragePath)) {
       fs.mkdirSync(this.localStoragePath, { recursive: true })
     }
+
+    this.limit = pLimit(5) // max 5 parallel uploads
   }
 
   public static getInstance(
@@ -102,7 +106,7 @@ export class MediaConverter {
           MaxKeys: 1
         })
 
-        const listResult = await this.s3Client!.send(listCommand)
+        const listResult = await this.limit(() => this.s3Client!.send(listCommand))
         if (listResult.Contents && listResult.Contents.length > 0) {
           return listResult.Contents[0].Key || null
         }
@@ -135,7 +139,7 @@ export class MediaConverter {
           MaxKeys: 1
         })
 
-        const listResult = await this.s3Client!.send(listCommand)
+        const listResult = await this.limit(() => this.s3Client!.send(listCommand))
         if (listResult.Contents && listResult.Contents.length > 0) {
           return true
         }
