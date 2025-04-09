@@ -42,12 +42,12 @@ export class MediaConverter {
       ? null
       : new S3Client({
           region,
-          maxAttempts: 3,
+          maxAttempts: 1,
           requestHandler: {
-            connectionTimeout: 5000, // 5 seconds
-            socketTimeout: 60000, // 30 seconds
+            connectionTimeout: 15000, // 15 seconds
+            socketTimeout: 1200000, // 120 seconds
             keepAlive: true,
-            keepAliveMsecs: 1000
+            keepAliveMsecs: 10000
           }
         })
     this.components = components
