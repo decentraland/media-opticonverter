@@ -7,6 +7,7 @@ import * as os from 'os'
 import * as crypto from 'crypto'
 import sharp from 'sharp'
 import { AppComponents } from '../types'
+import { Agent } from 'https'
 
 const execAsync = promisify(exec)
 
@@ -38,6 +39,14 @@ export class MediaConverter {
   ) {
     this.bucket = bucket
     this.cloudfrontDomain = cloudfrontDomain
+
+    const httpsAgent = new Agent({
+      keepAlive: true,
+      keepAliveMsecs: 60000,
+      maxSockets: 10,
+      maxFreeSockets: 5
+    })
+
     this.s3Client = useLocalStorage
       ? null
       : new S3Client({
@@ -46,8 +55,7 @@ export class MediaConverter {
           requestHandler: {
             connectionTimeout: 15000, // 15 seconds
             socketTimeout: 1200000, // 120 seconds
-            keepAlive: true,
-            keepAliveMsecs: 10000
+            httpsAgent
           }
         })
     this.components = components
