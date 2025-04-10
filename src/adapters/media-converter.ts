@@ -469,7 +469,17 @@ export class MediaConverter {
     try {
       // Clean URL by removing query parameters
       const cleanUrl = fileUrl.split('?')[0]
-      let ext = path.extname(cleanUrl)
+
+      // Extract extension
+      let ext = path.extname(cleanUrl).toLowerCase()
+
+      // Check if the extension is a recognized image/media type
+      const validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg']
+      if (!validExtensions.includes(ext)) {
+        // If not a recognized extension, set to empty and let the detection logic handle it
+        ext = ''
+      }
+
       const shortHash = this.generateShortHash(cleanUrl)
 
       this.logger.info('Starting convert', {

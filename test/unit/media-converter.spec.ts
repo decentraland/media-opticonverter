@@ -699,4 +699,96 @@ describe('MediaConverter Unit Tests', () => {
       expect(response.headers['Cache-Control']).toBe('public, max-age=31536000')
     })
   })
+
+  describe('Special URL formats', () => {
+    it('should handle URLs with unrecognized extensions', async () => {
+      // Create a URL with a .link extension pointing to a JPEG image
+      const unrecognizedUrl = `${testServerUrl}/jpg.link`
+
+      // Patch the server handler to respond to this URL
+      const originalListener = testServer.listeners('request')[0] as (
+        req: http.IncomingMessage,
+        res: http.ServerResponse
+      ) => void
+      testServer.removeAllListeners('request')
+
+      testServer.on('request', (req, res) => {
+        if (req.url === '/jpg.link') {
+          // Serve the jpg file with correct content type despite the .link extension
+          const content = fs.readFileSync(testFiles.jpg)
+          res.writeHead(200, { 'Content-Type': 'image/jpeg' })
+          res.end(content)
+        } else {
+          // Call the original listener for other requests
+          originalListener(req, res)
+        }
+      })
+
+      // Generate the expected hash
+      const jpgLinkHash = generateShortHash(unrecognizedUrl)
+
+      // Convert the URL
+      const result = await converter.convert(unrecognizedUrl)
+      const expectedUrl = `http://localhost:8000/storage/${jpgLinkHash}.jpg`
+      expect(result).toBe(expectedUrl)
+
+      // Verify the file was created in storage with the expected name and extension
+      const storagePath = path.join(process.cwd(), 'storage', `${jpgLinkHash}.jpg`)
+      expect(fs.existsSync(storagePath)).toBe(true)
+
+      // Verify it's a valid image file
+      const dimensions = await getDimensions(storagePath)
+      expect(dimensions.width).toBeGreaterThan(0)
+      expect(dimensions.height).toBeGreaterThan(0)
+
+      // Restore the original request listener
+      testServer.removeAllListeners('request')
+      testServer.on('request', originalListener)
+    })
+
+    it('should handle IPFS URLs (with multiple dots in the domain)', async () => {
+      // Create a mock IPFS URL using the actual jpeg file
+      const ipfsUrl = `${testServerUrl}/bafybeifkiqzmdooi7e43w22cnbmvj6arvmhsibglm6dxej2jal7re4upyi.ipfs.nftstorage.link`
+
+      // Patch the server handler to respond to this URL
+      const originalListener = testServer.listeners('request')[0] as (
+        req: http.IncomingMessage,
+        res: http.ServerResponse
+      ) => void
+      testServer.removeAllListeners('request')
+
+      testServer.on('request', (req, res) => {
+        if (req.url === '/bafybeifkiqzmdooi7e43w22cnbmvj6arvmhsibglm6dxej2jal7re4upyi.ipfs.nftstorage.link') {
+          // Serve the jpg file with correct content type
+          const content = fs.readFileSync(testFiles.jpg)
+          res.writeHead(200, { 'Content-Type': 'image/jpeg' })
+          res.end(content)
+        } else {
+          // Call the original listener for other requests
+          originalListener(req, res)
+        }
+      })
+
+      // Generate the expected hash
+      const ipfsHash = generateShortHash(ipfsUrl)
+
+      // Convert the URL
+      const result = await converter.convert(ipfsUrl)
+      const expectedUrl = `http://localhost:8000/storage/${ipfsHash}.jpg`
+      expect(result).toBe(expectedUrl)
+
+      // Verify the file was created in storage with the correct extension
+      const storagePath = path.join(process.cwd(), 'storage', `${ipfsHash}.jpg`)
+      expect(fs.existsSync(storagePath)).toBe(true)
+
+      // Verify it's a valid image file
+      const dimensions = await getDimensions(storagePath)
+      expect(dimensions.width).toBeGreaterThan(0)
+      expect(dimensions.height).toBeGreaterThan(0)
+
+      // Restore the original request listener
+      testServer.removeAllListeners('request')
+      testServer.on('request', originalListener)
+    })
+  })
 })
