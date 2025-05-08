@@ -3,7 +3,7 @@ import { MediaConverter } from '../../adapters/media-converter'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, HEAD',
   'Access-Control-Allow-Headers': 'Content-Type'
 } as const
 
@@ -16,7 +16,7 @@ export async function convertHandler(
   let ktx2: boolean | undefined
   let preProcessToPNG: boolean | undefined
 
-  if (request.method === 'GET') {
+  if (request.method === 'GET' || request.method === 'HEAD') {
     const url = new URL(request.url)
     fileUrl = url.searchParams.get('fileUrl') || undefined
     ktx2 = url.searchParams.get('ktx2') === 'true'
@@ -52,7 +52,7 @@ export async function convertHandler(
     const converter = MediaConverter.getInstance(bucket, cloudfrontDomain, region, components, useLocalStorage)
     const result = await converter.convert(fileUrl, ktx2, preProcessToPNG)
 
-    if (request.method === 'GET') {
+    if (request.method === 'GET' || request.method === 'HEAD') {
       return {
         status: 302,
         headers: {

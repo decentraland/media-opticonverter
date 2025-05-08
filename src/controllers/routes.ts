@@ -11,6 +11,7 @@ export async function setupRouter(globalContext: GlobalContext): Promise<Router<
   router.get('/ping', pingHandler)
   router.get('/convert', convertHandler)
   router.post('/convert', convertHandler)
+  router.head('/convert', convertHandler)
 
   // Add storage route for local files only when USE_LOCAL_STORAGE is true
   const useLocalStorage = (await globalContext.components.config.getString('USE_LOCAL_STORAGE')) === 'true'
