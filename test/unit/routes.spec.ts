@@ -1,12 +1,14 @@
 // Set up mock functions for router
 const mockGet = jest.fn()
 const mockPost = jest.fn()
+const mockHead = jest.fn()
 
 // First mock all dependencies to avoid import issues
 jest.mock('@well-known-components/http-server', () => ({
   Router: jest.fn().mockImplementation(() => ({
     get: mockGet,
-    post: mockPost
+    post: mockPost,
+    head: mockHead
   }))
 }))
 
@@ -27,7 +29,7 @@ import { pingHandler } from '../../src/controllers/handlers/ping-handler'
 import { convertHandler } from '../../src/controllers/handlers/convert-handler'
 import { storageHandler } from '../../src/controllers/handlers/storage-handler'
 
-describe('Routes Unit Tests', () => {
+describe.only('Routes Unit Tests', () => {
   const mockPingHandler = pingHandler as jest.Mock
   const mockConvertHandler = convertHandler as jest.Mock
   const mockStorageHandler = storageHandler as jest.Mock
@@ -60,7 +62,7 @@ describe('Routes Unit Tests', () => {
     expect(mockPost).toHaveBeenCalledWith('/convert', mockConvertHandler)
 
     // Verify HEAD convert route
-    expect(mockPost).toHaveBeenCalledWith('/convert', mockConvertHandler)
+    expect(mockHead).toHaveBeenCalledWith('/convert', mockConvertHandler)
 
     // Storage route should not be added
     expect(mockGet).not.toHaveBeenCalledWith('/storage/:filename', mockStorageHandler)
