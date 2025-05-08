@@ -59,6 +59,10 @@ describe('Routes Unit Tests', () => {
     // Verify POST convert route
     expect(mockPost).toHaveBeenCalledWith('/convert', mockConvertHandler)
 
+     // Verify HEAD convert route
+     expect(mockPost).toHaveBeenCalledWith('/convert', mockConvertHandler)
+
+
     // Storage route should not be added
     expect(mockGet).not.toHaveBeenCalledWith('/storage/:filename', mockStorageHandler)
   })
