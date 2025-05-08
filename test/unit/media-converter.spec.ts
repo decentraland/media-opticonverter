@@ -631,7 +631,7 @@ describe('MediaConverter Unit Tests', () => {
       }
       const response = await convertHandler(mockContext as any)
       expect(response.headers['Access-Control-Allow-Origin']).toBe('*')
-      expect(response.headers['Access-Control-Allow-Methods']).toBe('GET, POST, OPTIONS')
+      expect(response.headers['Access-Control-Allow-Methods']).toBe('GET, POST, OPTIONS, HEAD')
       expect(response.headers['Access-Control-Allow-Headers']).toBe('Content-Type')
     })
 
